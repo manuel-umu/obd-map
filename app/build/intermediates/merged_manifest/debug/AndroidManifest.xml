@@ -31,11 +31,14 @@
         atributos android:icon y android:roundIcon.
     -->
     <application
+        android:name="com.obdmap.launcher.OBDMapApplication"
         android:allowBackup="false"
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
         android:extractNativeLibs="false"
+        android:hardwareAccelerated="true"
         android:label="@string/app_name"
+        android:largeHeap="false"
         android:supportsRtl="false"
         android:testOnly="true"
         android:theme="@style/Theme.ObdMap" >

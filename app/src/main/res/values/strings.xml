@@ -3,10 +3,15 @@
     <!-- Nombre visible de la aplicación. -->
     <string name="app_name">OBD-Map</string>
 
-    <!-- Texto del placeholder mostrado mientras no hay mapa cargado (Fase 0). -->
-    <string name="placeholder_title">OBD-Map</string>
-    <string name="placeholder_subtitle">Fase 0 — esqueleto del launcher</string>
-
-    <!-- Botón de acceso de emergencia a los ajustes del sistema. -->
+    <!-- Botones del layout principal. -->
     <string name="emergency_access_button">Ajustes del sistema</string>
+    <string name="recenter_button">Recentrar</string>
+
+    <!-- Mensajes de estado (overlay superior izquierdo). -->
+    <string name="status_initializing">Inicializando…</string>
+    <string name="status_no_permissions">Permisos denegados — la app no puede funcionar</string>
+    <string name="status_no_map">No se encontró archivo .map en /sdcard/Download</string>
+    <string name="status_map_loaded">Mapa: %1$s · esperando GPS…</string>
+    <string name="status_gps_active">GPS activo</string>
+    <string name="status_gps_lost">GPS perdido</string>
 </resources>

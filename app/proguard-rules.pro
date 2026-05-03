@@ -27,7 +27,29 @@
 }
 
 # -----------------------------------------------------------------------------
-# Reglas de Mapsforge        — Se añadirán en la Fase 1.
+# Mapsforge (Fase 1)
+# -----------------------------------------------------------------------------
+# Mapsforge usa serialización Java en algunos componentes internos (caches,
+# render themes). Mantenemos sus clases públicas para evitar fallos en runtime.
+-keep class org.mapsforge.** { *; }
+-keep interface org.mapsforge.** { *; }
+-dontwarn org.mapsforge.**
+
+# AndroidSVG: dependencia transitiva usada por algunos themes de Mapsforge.
+-keep class com.caverock.androidsvg.** { *; }
+-dontwarn com.caverock.androidsvg.**
+
+# Reglas estándar para clases serializables (necesario para los caches).
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
+}
+
+# -----------------------------------------------------------------------------
 # Reglas de obd-java-api     — Se añadirán en la Fase 2.
 # Reglas de GraphHopper      — Se añadirán en la Fase 4.
 # -----------------------------------------------------------------------------

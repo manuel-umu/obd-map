@@ -2,7 +2,8 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 28
-    buildToolsVersion '28.0.3'
+    // No fijamos buildToolsVersion: AGP elige automáticamente la versión
+    // mínima compatible (30.0.3 para AGP 7.4.2).
 
     defaultConfig {
         applicationId "com.obdmap.launcher"
@@ -63,4 +64,12 @@ dependencies {
 
     // Annotation: necesario para @IntDef (sustituto de Enums) y @NonNull/@Nullable.
     implementation 'androidx.annotation:annotation:1.1.0'
+
+    // Mapsforge: renderizado offline de mapas a partir de archivos .map de OSM.
+    // 0.18.0 es estable y plenamente compatible con compileSdk 28 / Android 7+.
+    implementation 'org.mapsforge:mapsforge-map-android:0.18.0'
+
+    // Themes empaquetados de Mapsforge (DEFAULT, OSMARENDER, MOTORIDER…).
+    // Desde 0.16+ están en un artefacto separado para no inflar el core.
+    implementation 'org.mapsforge:mapsforge-themes:0.18.0'
 }

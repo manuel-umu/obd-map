@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Marcador estático de posición: círculo azul con anillo blanco.
+    En 1.5b se sustituirá por un icono direccional rotado según el rumbo (bearing).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1 A11,11 0 1,0 12,23 A11,11 0 1,0 12,1 Z" />
+
+    <path
+        android:fillColor="#FF2196F3"
+        android:pathData="M12,5 A7,7 0 1,0 12,19 A7,7 0 1,0 12,5 Z" />
+
+</vector>

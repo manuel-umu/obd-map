@@ -25,8 +25,11 @@
         atributos android:icon y android:roundIcon.
     -->
     <application
+        android:name=".OBDMapApplication"
         android:allowBackup="false"
+        android:hardwareAccelerated="true"
         android:label="@string/app_name"
+        android:largeHeap="false"
         android:supportsRtl="false"
         android:theme="@style/Theme.ObdMap">
 

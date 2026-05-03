@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewbinding.ViewBinding;
@@ -14,6 +15,7 @@ import com.obdmap.launcher.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
 import java.lang.String;
+import org.mapsforge.map.android.view.MapView;
 
 public final class ActivityMainBinding implements ViewBinding {
   @NonNull
@@ -22,10 +24,22 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final Button emergencyAccessButton;
 
-  private ActivityMainBinding(@NonNull FrameLayout rootView,
-      @NonNull Button emergencyAccessButton) {
+  @NonNull
+  public final MapView mapView;
+
+  @NonNull
+  public final Button recenterButton;
+
+  @NonNull
+  public final TextView statusText;
+
+  private ActivityMainBinding(@NonNull FrameLayout rootView, @NonNull Button emergencyAccessButton,
+      @NonNull MapView mapView, @NonNull Button recenterButton, @NonNull TextView statusText) {
     this.rootView = rootView;
     this.emergencyAccessButton = emergencyAccessButton;
+    this.mapView = mapView;
+    this.recenterButton = recenterButton;
+    this.statusText = statusText;
   }
 
   @Override
@@ -61,7 +75,26 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((FrameLayout) rootView, emergencyAccessButton);
+      id = R.id.mapView;
+      MapView mapView = ViewBindings.findChildViewById(rootView, id);
+      if (mapView == null) {
+        break missingId;
+      }
+
+      id = R.id.recenterButton;
+      Button recenterButton = ViewBindings.findChildViewById(rootView, id);
+      if (recenterButton == null) {
+        break missingId;
+      }
+
+      id = R.id.statusText;
+      TextView statusText = ViewBindings.findChildViewById(rootView, id);
+      if (statusText == null) {
+        break missingId;
+      }
+
+      return new ActivityMainBinding((FrameLayout) rootView, emergencyAccessButton, mapView,
+          recenterButton, statusText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

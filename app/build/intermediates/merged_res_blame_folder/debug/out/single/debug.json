@@ -2,5 +2,13 @@
     {
         "merged": "com.obdmap.launcher.app-merged_res-14:/layout_activity_main.xml.flat",
         "source": "com.obdmap.launcher.app-main-16:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.obdmap.launcher.app-merged_res-14:/drawable_ic_position.xml.flat",
+        "source": "com.obdmap.launcher.app-main-16:/drawable/ic_position.xml"
+    },
+    {
+        "merged": "C:\\Users\\1002m\\.gradle\\daemon\\7.6.4\\com.obdmap.launcher.app-merged_res-14:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\1002m\\.gradle\\daemon\\7.6.4\\com.obdmap.launcher.app-main-16:\\layout\\activity_main.xml"
     }
 ]

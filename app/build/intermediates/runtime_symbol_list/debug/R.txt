@@ -1360,6 +1360,7 @@ int drawable ic_mtrl_checked_circle 0x7f07006c
 int drawable ic_mtrl_chip_checked_black 0x7f07006d
 int drawable ic_mtrl_chip_checked_circle 0x7f07006e
 int drawable ic_mtrl_chip_close_circle 0x7f07006f
+int drawable ic_position 0x7f070090
 int drawable material_ic_calendar_black_24dp 0x7f070070
 int drawable material_ic_clear_black_24dp 0x7f070071
 int drawable material_ic_edit_black_24dp 0x7f070072
@@ -1537,6 +1538,7 @@ int id line1 0x7f08008d
 int id line3 0x7f08008e
 int id listMode 0x7f08008f
 int id list_item 0x7f080090
+int id mapView 0x7f080125
 int id masked 0x7f080091
 int id message 0x7f080092
 int id middle 0x7f080093
@@ -1589,6 +1591,7 @@ int id pin 0x7f0800c1
 int id progress_circular 0x7f0800c2
 int id progress_horizontal 0x7f0800c3
 int id radio 0x7f0800c4
+int id recenterButton 0x7f080126
 int id right 0x7f0800c5
 int id right_icon 0x7f0800c6
 int id right_side 0x7f0800c7
@@ -1632,6 +1635,7 @@ int id src_atop 0x7f0800ec
 int id src_in 0x7f0800ed
 int id src_over 0x7f0800ee
 int id start 0x7f0800ef
+int id statusText 0x7f080127
 int id stretch 0x7f0800f0
 int id submenuarrow 0x7f0800f1
 int id submit_area 0x7f0800f2
@@ -1900,10 +1904,15 @@ int string path_password_eye 0x7f0d0051
 int string path_password_eye_mask_strike_through 0x7f0d0052
 int string path_password_eye_mask_visible 0x7f0d0053
 int string path_password_strike_through 0x7f0d0054
-int string placeholder_subtitle 0x7f0d0055
-int string placeholder_title 0x7f0d0056
+int string recenter_button 0x7f0d0059
 int string search_menu_title 0x7f0d0057
 int string status_bar_notification_info_overflow 0x7f0d0058
+int string status_gps_active 0x7f0d005a
+int string status_gps_lost 0x7f0d005b
+int string status_initializing 0x7f0d005c
+int string status_map_loaded 0x7f0d005d
+int string status_no_map 0x7f0d005e
+int string status_no_permissions 0x7f0d005f
 int style AlertDialog_AppCompat 0x7f0e0000
 int style AlertDialog_AppCompat_Light 0x7f0e0001
 int style AndroidThemeColorAccentYellow 0x7f0e0002
