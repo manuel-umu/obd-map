@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta sobria y oscura, pensada para un panel de coche. -->
+    <color name="background_dark">#FF101418</color>
+    <color name="surface_dark">#FF1B2026</color>
+    <color name="primary">#FF2196F3</color>
+    <color name="primary_dark">#FF1976D2</color>
+    <color name="accent">#FFFFB300</color>
+    <color name="text_primary">#FFE6E6E6</color>
+    <color name="text_secondary">#FFB0B0B0</color>
+    <color name="emergency_button">#FFB00020</color>
+</resources>

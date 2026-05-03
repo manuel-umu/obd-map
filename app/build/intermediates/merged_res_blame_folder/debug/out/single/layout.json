@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.obdmap.launcher.app-mergeDebugResources-13:/layout/activity_main.xml",
+        "source": "com.obdmap.launcher.app-main-16:/layout/activity_main.xml"
+    }
+]

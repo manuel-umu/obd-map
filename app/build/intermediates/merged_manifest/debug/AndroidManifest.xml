@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.obdmap.launcher"
+    android:versionCode="1"
+    android:versionName="0.1.0-fase0" >
+
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="28" />
+
+    <!-- Comunicación con el ELM327 vía Bluetooth clásico (SPP). -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!-- Necesario para listar dispositivos emparejados desde la pantalla de Ajustes. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- GPS: la radio tiene receptor propio, accedemos vía LocationManager. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Foreground Service para mantener la lectura OBD2 viva en segundo plano. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- WakeLock: evitar que la radio se duerma mientras se conduce. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Lectura de tarjeta SD para los mapas .map y los grafos .ghz. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!--
+        Iconos por defecto del sistema en Fase 0. Se generarán los mipmap propios
+        más adelante (Android Studio → New → Image Asset) y se reañadirán los
+        atributos android:icon y android:roundIcon.
+    -->
+    <application
+        android:allowBackup="false"
+        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+        android:debuggable="true"
+        android:extractNativeLibs="false"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:testOnly="true"
+        android:theme="@style/Theme.ObdMap" >
+        <activity
+            android:name="com.obdmap.launcher.ui.MainActivity"
+            android:exported="true"
+            android:keepScreenOn="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:stateNotNeeded="true" >
+
+            <!-- Lanzador estándar: aparece en el cajón de apps. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Categoría HOME: permite seleccionar OBD-Map como launcher por defecto. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

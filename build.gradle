@@ -1,0 +1,25 @@
+// Build script raíz. Usamos AGP 7.4.2 (última 7.x estable):
+// - Compatible con compileSdk 28 y JDK 17 (lo que pide Android Studio actual).
+// - No fuerza el bump a AndroidX moderno que exigiría AGP 8.x.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Android Gradle Plugin: define las tareas de build de Android.
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Tarea de utilidad para limpiar todos los módulos en una sola llamada.
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

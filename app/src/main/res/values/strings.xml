@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nombre visible de la aplicación. -->
+    <string name="app_name">OBD-Map</string>
+
+    <!-- Texto del placeholder mostrado mientras no hay mapa cargado (Fase 0). -->
+    <string name="placeholder_title">OBD-Map</string>
+    <string name="placeholder_subtitle">Fase 0 — esqueleto del launcher</string>
+
+    <!-- Botón de acceso de emergencia a los ajustes del sistema. -->
+    <string name="emergency_access_button">Ajustes del sistema</string>
+</resources>

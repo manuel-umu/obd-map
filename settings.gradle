@@ -1,0 +1,3 @@
+// Configuración del proyecto multi-módulo (de momento solo el módulo "app").
+rootProject.name = 'OBD-Map'
+include ':app'

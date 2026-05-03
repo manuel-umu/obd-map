@@ -1,0 +1,66 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
+
+    defaultConfig {
+        applicationId "com.obdmap.launcher"
+        minSdkVersion 24       // Android 7.0 — radios chinas modernas
+        targetSdkVersion 28    // Evita permisos runtime de API 29+ y bloat AndroidX nuevo
+        versionCode 1
+        versionName "0.1.0-fase0"
+
+        // Sin multidex: el proyecto debe caber holgadamente en un solo dex.
+        multiDexEnabled false
+
+        // Vector drawables vía librería de soporte (más ligero que vectores nativos en API < 21,
+        // aunque nuestro minSdk es 24, lo dejamos por compatibilidad de assets).
+        vectorDrawables.useSupportLibrary = true
+    }
+
+    // ViewBinding habilitado desde el día 1 (sintaxis AGP 7.x).
+    buildFeatures {
+        viewBinding true
+    }
+
+    compileOptions {
+        // Java 8 — necesario para algunas APIs y suficiente para evitar el peso de Java 11+.
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            // Nada de minify en debug para depurar cómodamente.
+            minifyEnabled false
+            shrinkResources false
+        }
+        release {
+            // ProGuard/R8 activo desde el día 1: imprescindible para llegar al
+            // presupuesto de 150-200 MB de RAM y mantener el APK pequeño.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // Excluye metadatos innecesarios que vienen en algunas dependencias.
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/*.kotlin_module', 'META-INF/AL2.0', 'META-INF/LGPL2.1']
+        }
+    }
+}
+
+dependencies {
+    // AppCompat: Activity base, soporte de temas y componentes UI compatibles.
+    // Versión 1.2.0 es la última estable plenamente compatible con compileSdk 28.
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+
+    // Material Components: botones y estilos consistentes para la UI del coche.
+    implementation 'com.google.android.material:material:1.2.1'
+
+    // Annotation: necesario para @IntDef (sustituto de Enums) y @NonNull/@Nullable.
+    implementation 'androidx.annotation:annotation:1.1.0'
+}
