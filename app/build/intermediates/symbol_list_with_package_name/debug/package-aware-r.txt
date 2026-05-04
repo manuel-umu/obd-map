@@ -1463,6 +1463,7 @@ id all
 id always
 id async
 id auto
+id backButton
 id beginning
 id blocking
 id bottom
@@ -1479,6 +1480,7 @@ id chip2
 id chip3
 id chip_group
 id chronometer
+id clearSelectionButton
 id clear_text
 id clip_horizontal
 id clip_vertical
@@ -1499,6 +1501,8 @@ id design_menu_item_action_area
 id design_menu_item_action_area_stub
 id design_menu_item_text
 id design_navigation_view
+id deviceMac
+id deviceName
 id dialog_button
 id disableHome
 id dropdown_menu
@@ -1583,7 +1587,10 @@ id notification_main_column
 id notification_main_column_container
 id off
 id on
+id openBtSettingsButton
+id openSettingsButton
 id outline
+id pairedDevicesList
 id parallax
 id parentPanel
 id parent_matrix
@@ -1620,6 +1627,7 @@ id search_src_text
 id search_voice_btn
 id select_dialog_listview
 id selected
+id selectedDeviceText
 id shortcut
 id showCustom
 id showHome
@@ -1637,6 +1645,7 @@ id src_atop
 id src_in
 id src_over
 id start
+id statusMessage
 id statusText
 id stretch
 id submenuarrow
@@ -1752,6 +1761,7 @@ layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
 layout activity_main
+layout activity_settings
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog
@@ -1768,6 +1778,7 @@ layout design_navigation_menu
 layout design_navigation_menu_item
 layout design_text_input_end_icon
 layout design_text_input_start_icon
+layout item_bt_device
 layout mtrl_alert_dialog
 layout mtrl_alert_dialog_actions
 layout mtrl_alert_dialog_title
@@ -1901,6 +1912,7 @@ string mtrl_picker_toggle_to_calendar_input_mode
 string mtrl_picker_toggle_to_day_selection
 string mtrl_picker_toggle_to_text_input_mode
 string mtrl_picker_toggle_to_year_selection
+string open_app_settings_button
 string password_toggle_content_description
 string path_password_eye
 string path_password_eye_mask_strike_through
@@ -1908,6 +1920,15 @@ string path_password_eye_mask_visible
 string path_password_strike_through
 string recenter_button
 string search_menu_title
+string settings_bt_off
+string settings_clear_button
+string settings_no_bt_settings_app
+string settings_no_paired
+string settings_none_selected
+string settings_open_bt_settings
+string settings_section_paired
+string settings_selected_label
+string settings_title
 string status_bar_notification_info_overflow
 string status_gps_active
 string status_gps_lost

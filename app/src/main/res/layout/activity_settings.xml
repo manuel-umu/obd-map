@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Layout de la pantalla de Ajustes (Bloque A, Fase 2).
+    Estructura lineal vertical:
+        1. Barra de título con botón atrás.
+        2. Chip de selección actual.
+        3. Subtítulo de sección.
+        4. ListView con los dispositivos emparejados (sin RecyclerView para
+           no introducir dependencia nueva: AppCompat 1.2.0 ya incluye ListView).
+        5. Botones de acción (borrar selección, abrir ajustes BT).
+        6. Mensaje de estado cuando BT está apagado o no hay emparejados.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:orientation="vertical">
+
+    <!-- Barra de título propia (la Activity usa NoActionBar). -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@color/primary_dark"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="@string/recenter_button"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/settings_title"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Dispositivo actualmente seleccionado. -->
+    <TextView
+        android:id="@+id/selectedDeviceText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="@color/surface_dark"
+        android:padding="12dp"
+        android:text="@string/settings_none_selected"
+        android:textColor="@color/accent"
+        android:textSize="15sp" />
+
+    <!-- Subtítulo de la lista. -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="4dp"
+        android:text="@string/settings_section_paired"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <!--
+        ListView clásico: sin dependencia extra, mínimo overhead.
+        Ocupa el espacio disponible; los botones de acción quedan al pie.
+    -->
+    <ListView
+        android:id="@+id/pairedDevicesList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_weight="1"
+        android:divider="@color/surface_dark"
+        android:dividerHeight="1dp"
+        android:scrollbars="vertical" />
+
+    <!-- Mensaje de estado cuando BT apagado o sin emparejados. Oculto por defecto. -->
+    <TextView
+        android:id="@+id/statusMessage"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textColor="@color/text_secondary"
+        android:textSize="15sp"
+        android:visibility="gone" />
+
+    <!-- Botón para abrir ajustes BT del sistema (visible cuando BT apagado o sin emparejados). -->
+    <Button
+        android:id="@+id/openBtSettingsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="@color/primary"
+        android:minHeight="52dp"
+        android:text="@string/settings_open_bt_settings"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:visibility="gone" />
+
+    <!-- Botón para limpiar la selección actual. -->
+    <Button
+        android:id="@+id/clearSelectionButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/surface_dark"
+        android:minHeight="52dp"
+        android:text="@string/settings_clear_button"
+        android:textColor="@color/text_secondary"
+        android:textSize="15sp" />
+
+</LinearLayout>

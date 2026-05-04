@@ -28,16 +28,21 @@ public final class ActivityMainBinding implements ViewBinding {
   public final MapView mapView;
 
   @NonNull
+  public final Button openSettingsButton;
+
+  @NonNull
   public final Button recenterButton;
 
   @NonNull
   public final TextView statusText;
 
   private ActivityMainBinding(@NonNull FrameLayout rootView, @NonNull Button emergencyAccessButton,
-      @NonNull MapView mapView, @NonNull Button recenterButton, @NonNull TextView statusText) {
+      @NonNull MapView mapView, @NonNull Button openSettingsButton, @NonNull Button recenterButton,
+      @NonNull TextView statusText) {
     this.rootView = rootView;
     this.emergencyAccessButton = emergencyAccessButton;
     this.mapView = mapView;
+    this.openSettingsButton = openSettingsButton;
     this.recenterButton = recenterButton;
     this.statusText = statusText;
   }
@@ -81,6 +86,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.openSettingsButton;
+      Button openSettingsButton = ViewBindings.findChildViewById(rootView, id);
+      if (openSettingsButton == null) {
+        break missingId;
+      }
+
       id = R.id.recenterButton;
       Button recenterButton = ViewBindings.findChildViewById(rootView, id);
       if (recenterButton == null) {
@@ -94,7 +105,7 @@ public final class ActivityMainBinding implements ViewBinding {
       }
 
       return new ActivityMainBinding((FrameLayout) rootView, emergencyAccessButton, mapView,
-          recenterButton, statusText);
+          openSettingsButton, recenterButton, statusText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

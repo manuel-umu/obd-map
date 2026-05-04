@@ -2,10 +2,8 @@ package com.obdmap.launcher.map;
 
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import org.mapsforge.core.graphics.Bitmap;
 import org.mapsforge.core.graphics.Canvas;
 import org.mapsforge.core.model.BoundingBox;
@@ -76,14 +74,12 @@ public final class PositionLayer extends Layer {
     public void updatePosition(@NonNull LatLong latLong, float bearing,
                                boolean hasBearing, float speedMs) {
         position = latLong;
-
         // Solo actualizamos el rumbo si el GPS lo reporta como válido y la
         // velocidad es suficiente para que el bearing no sea ruido puro.
         // Si no, mantenemos lastBearing para evitar parpadeo al frenar.
         if (hasBearing && speedMs >= MIN_SPEED_FOR_BEARING_MS) {
             lastBearing = bearing;
         }
-
         requestRedraw();
     }
 

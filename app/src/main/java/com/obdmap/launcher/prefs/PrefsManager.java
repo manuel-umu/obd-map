@@ -57,6 +57,10 @@ public final class PrefsManager {
         prefs.edit().putString(KEY_OBD_MAC, mac).apply();
     }
 
+    public void clearObdMac() {
+        prefs.edit().remove(KEY_OBD_MAC).apply();
+    }
+
     // ---------------------------------------------------------------------
     // Última posición GPS
     // ---------------------------------------------------------------------

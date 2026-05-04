@@ -7,6 +7,22 @@
     <string name="emergency_access_button">Ajustes del sistema</string>
     <string name="recenter_button">Recentrar</string>
 
+    <!-- Botón que abre la pantalla de Ajustes de la app. -->
+    <string name="open_app_settings_button">Ajustes OBD</string>
+
+    <!-- Pantalla de Ajustes — títulos y botones. -->
+    <string name="settings_title">Ajustes — Adaptador OBD2</string>
+    <string name="settings_section_paired">Dispositivos Bluetooth emparejados</string>
+    <string name="settings_selected_label">Seleccionado: %1$s</string>
+    <string name="settings_none_selected">Ninguno seleccionado</string>
+    <string name="settings_clear_button">Borrar selección</string>
+    <string name="settings_open_bt_settings">Abrir ajustes Bluetooth</string>
+
+    <!-- Mensajes de estado dentro de Ajustes. -->
+    <string name="settings_bt_off">Bluetooth apagado. Actívalo para ver los dispositivos emparejados.</string>
+    <string name="settings_no_paired">No hay dispositivos emparejados. Ve a los ajustes Bluetooth del sistema para emparejar el adaptador ELM327.</string>
+    <string name="settings_no_bt_settings_app">No se encontró la app de Ajustes del sistema</string>
+
     <!-- Mensajes de estado (overlay superior izquierdo). -->
     <string name="status_initializing">Inicializando…</string>
     <string name="status_no_permissions">Permisos denegados — la app no puede funcionar</string>

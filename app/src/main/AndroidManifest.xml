@@ -55,6 +55,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Pantalla de Ajustes de la app (Bloque A, Fase 2). -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
     </application>
 
 </manifest>

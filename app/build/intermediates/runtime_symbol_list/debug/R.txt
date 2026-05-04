@@ -1462,6 +1462,7 @@ int id all 0x7f080040
 int id always 0x7f080041
 int id async 0x7f080042
 int id auto 0x7f080043
+int id backButton 0x7f080128
 int id beginning 0x7f080044
 int id blocking 0x7f080045
 int id bottom 0x7f080046
@@ -1478,6 +1479,7 @@ int id chip2 0x7f080050
 int id chip3 0x7f080051
 int id chip_group 0x7f080052
 int id chronometer 0x7f080053
+int id clearSelectionButton 0x7f080129
 int id clear_text 0x7f080054
 int id clip_horizontal 0x7f080055
 int id clip_vertical 0x7f080056
@@ -1498,6 +1500,8 @@ int id design_menu_item_action_area 0x7f080064
 int id design_menu_item_action_area_stub 0x7f080065
 int id design_menu_item_text 0x7f080066
 int id design_navigation_view 0x7f080067
+int id deviceMac 0x7f08012a
+int id deviceName 0x7f08012b
 int id dialog_button 0x7f080068
 int id disableHome 0x7f080069
 int id dropdown_menu 0x7f08006a
@@ -1582,7 +1586,10 @@ int id notification_main_column 0x7f0800b8
 int id notification_main_column_container 0x7f0800b9
 int id off 0x7f0800ba
 int id on 0x7f0800bb
+int id openBtSettingsButton 0x7f08012c
+int id openSettingsButton 0x7f08012d
 int id outline 0x7f0800bc
+int id pairedDevicesList 0x7f08012e
 int id parallax 0x7f0800bd
 int id parentPanel 0x7f0800be
 int id parent_matrix 0x7f0800bf
@@ -1619,6 +1626,7 @@ int id search_src_text 0x7f0800dd
 int id search_voice_btn 0x7f0800de
 int id select_dialog_listview 0x7f0800df
 int id selected 0x7f0800e0
+int id selectedDeviceText 0x7f08012f
 int id shortcut 0x7f0800e1
 int id showCustom 0x7f0800e2
 int id showHome 0x7f0800e3
@@ -1636,6 +1644,7 @@ int id src_atop 0x7f0800ee
 int id src_in 0x7f0800ef
 int id src_over 0x7f0800f0
 int id start 0x7f0800f1
+int id statusMessage 0x7f080130
 int id statusText 0x7f0800f2
 int id stretch 0x7f0800f3
 int id submenuarrow 0x7f0800f4
@@ -1751,6 +1760,7 @@ int layout abc_search_view 0x7f0b0019
 int layout abc_select_dialog_material 0x7f0b001a
 int layout abc_tooltip 0x7f0b001b
 int layout activity_main 0x7f0b001c
+int layout activity_settings 0x7f0b0061
 int layout custom_dialog 0x7f0b001d
 int layout design_bottom_navigation_item 0x7f0b001e
 int layout design_bottom_sheet_dialog 0x7f0b001f
@@ -1767,6 +1777,7 @@ int layout design_navigation_menu 0x7f0b0029
 int layout design_navigation_menu_item 0x7f0b002a
 int layout design_text_input_end_icon 0x7f0b002b
 int layout design_text_input_start_icon 0x7f0b002c
+int layout item_bt_device 0x7f0b0062
 int layout mtrl_alert_dialog 0x7f0b002d
 int layout mtrl_alert_dialog_actions 0x7f0b002e
 int layout mtrl_alert_dialog_title 0x7f0b002f
@@ -1900,6 +1911,7 @@ int string mtrl_picker_toggle_to_calendar_input_mode 0x7f0d004c
 int string mtrl_picker_toggle_to_day_selection 0x7f0d004d
 int string mtrl_picker_toggle_to_text_input_mode 0x7f0d004e
 int string mtrl_picker_toggle_to_year_selection 0x7f0d004f
+int string open_app_settings_button 0x7f0d005e
 int string password_toggle_content_description 0x7f0d0050
 int string path_password_eye 0x7f0d0051
 int string path_password_eye_mask_strike_through 0x7f0d0052
@@ -1907,6 +1919,15 @@ int string path_password_eye_mask_visible 0x7f0d0053
 int string path_password_strike_through 0x7f0d0054
 int string recenter_button 0x7f0d0055
 int string search_menu_title 0x7f0d0056
+int string settings_bt_off 0x7f0d005f
+int string settings_clear_button 0x7f0d0060
+int string settings_no_bt_settings_app 0x7f0d0067
+int string settings_no_paired 0x7f0d0061
+int string settings_none_selected 0x7f0d0062
+int string settings_open_bt_settings 0x7f0d0063
+int string settings_section_paired 0x7f0d0064
+int string settings_selected_label 0x7f0d0065
+int string settings_title 0x7f0d0066
 int string status_bar_notification_info_overflow 0x7f0d0057
 int string status_gps_active 0x7f0d0058
 int string status_gps_lost 0x7f0d0059

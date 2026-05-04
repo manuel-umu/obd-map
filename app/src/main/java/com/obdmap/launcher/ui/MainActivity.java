@@ -71,6 +71,13 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
             }
         });
 
+        binding.openSettingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            }
+        });
+
         binding.recenterButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

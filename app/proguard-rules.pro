@@ -50,6 +50,15 @@
 }
 
 # -----------------------------------------------------------------------------
-# Reglas de obd-java-api     — Se añadirán en la Fase 2.
+# Paquete OBD2 propio (Bloque B, Fase 2)
+# -----------------------------------------------------------------------------
+# BluetoothObdReader usa BluetoothSocket y streams estándar de Java: no hay
+# reflection interna, así que no necesita -keep. Solo conservamos los nombres
+# de las clases públicas para que los stack traces sean legibles.
+-keep class com.obdmap.launcher.obd.ObdState { *; }
+-keep class com.obdmap.launcher.obd.ObdListener { *; }
+-keep class com.obdmap.launcher.obd.BluetoothObdReader { *; }
+
+# -----------------------------------------------------------------------------
 # Reglas de GraphHopper      — Se añadirán en la Fase 4.
 # -----------------------------------------------------------------------------

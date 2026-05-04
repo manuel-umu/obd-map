@@ -45,7 +45,7 @@
 31        atributos android:icon y android:roundIcon.
 32    -->
 33    <application
-33-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:27:5-58:19
+33-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:27:5-64:19
 34        android:name="com.obdmap.launcher.OBDMapApplication"
 34-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:28:9-42
 35        android:allowBackup="false"
@@ -107,6 +107,16 @@
 65-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:54:27-73
 66            </intent-filter>
 67        </activity>
-68    </application>
-69
-70</manifest>
+68
+69        <!-- Pantalla de Ajustes de la app (Bloque A, Fase 2). -->
+70        <activity
+70-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:59:9-62:53
+71            android:name="com.obdmap.launcher.ui.SettingsActivity"
+71-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:60:13-48
+72            android:exported="false"
+72-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:61:13-37
+73            android:screenOrientation="landscape" />
+73-->C:\Users\1002m\git\obd-map\app\src\main\AndroidManifest.xml:62:13-50
+74    </application>
+75
+76</manifest>

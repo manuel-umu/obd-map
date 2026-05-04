@@ -58,4 +58,20 @@
         android:textColor="@color/text_primary"
         android:textSize="16sp" />
 
+    <!-- Botón de acceso a Ajustes de la app (Bloque A). Tamaño reducido
+         para no estorbar al mapa: esquina inferior, entre Recentrar y el de emergencia. -->
+    <Button
+        android:id="@+id/openSettingsButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_margin="16dp"
+        android:background="@color/surface_dark"
+        android:minHeight="48dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:text="@string/open_app_settings_button"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
 </FrameLayout>
