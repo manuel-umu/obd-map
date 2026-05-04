@@ -30,7 +30,13 @@ public final class GpsManager {
      * (es el looper en el que se registra el LocationListener).
      */
     public interface PositionListener {
-        void onPositionUpdate(double latitude, double longitude, float bearingDegrees, float speedMs);
+        /**
+         * @param hasBearing {@code true} si el fix GPS incluye un bearing válido.
+         *                   Cuando es {@code false}, {@code bearingDegrees} vale 0
+         *                   y no debe usarse para rotar el marcador.
+         */
+        void onPositionUpdate(double latitude, double longitude,
+                              float bearingDegrees, boolean hasBearing, float speedMs);
         void onProviderDisabled();
     }
 
@@ -55,6 +61,7 @@ public final class GpsManager {
                         location.getLatitude(),
                         location.getLongitude(),
                         bearing,
+                        location.hasBearing(),
                         speed);
             }
 

@@ -19,21 +19,16 @@ import com.obdmap.launcher.databinding.ActivityMainBinding;
 import com.obdmap.launcher.gps.GpsManager;
 import com.obdmap.launcher.map.MapFileLocator;
 import com.obdmap.launcher.map.MapManager;
+import com.obdmap.launcher.map.PositionLayer;
 import com.obdmap.launcher.prefs.PrefsManager;
 
-import org.mapsforge.core.graphics.Bitmap;
 import org.mapsforge.core.model.LatLong;
-import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
-import org.mapsforge.map.layer.overlay.Marker;
 
 import java.io.File;
 
 /**
  * Activity principal del launcher. Gestiona los permisos en runtime, monta el
  * MapView de Mapsforge, arranca el GPS y maneja la lógica de auto-centrado.
- *
- * <p>En Fase 1 el marcador de posición es estático (sin rotación por rumbo);
- * la rotación se añadirá en la subfase 1.5b mediante una capa custom.</p>
  */
 public final class MainActivity extends AppCompatActivity implements GpsManager.PositionListener {
 
@@ -53,7 +48,7 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     // y se ha encontrado un archivo .map válido.
     @Nullable private MapManager mapManager;
     @Nullable private GpsManager gpsManager;
-    @Nullable private Marker positionMarker;
+    @Nullable private PositionLayer positionLayer;
 
     // Última posición conocida; se usa para recentrar bajo demanda.
     @Nullable private LatLong lastPosition;
@@ -148,13 +143,10 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         mapManager = new MapManager(this);
         mapManager.attachToView(binding.mapView, mapFile);
 
-        // Marcador de posición (sin posición aún: aparece al primer fix de GPS).
-        Bitmap markerBitmap = AndroidGraphicFactory.convertToBitmap(
-                ContextCompat.getDrawable(this, R.drawable.ic_position));
-        // incrementRefCount evita que Mapsforge libere el bitmap al añadirlo.
-        markerBitmap.incrementRefCount();
-        positionMarker = new Marker(null, markerBitmap, 0, 0);
-        binding.mapView.getLayerManager().getLayers().add(positionMarker);
+        // Capa de posición con rotación por rumbo. El icono aparece al primer fix GPS.
+        positionLayer = new PositionLayer(
+                ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
+        binding.mapView.getLayerManager().getLayers().add(positionLayer);
 
         binding.statusText.setText(getString(R.string.status_map_loaded, mapFile.getName()));
 
@@ -173,16 +165,12 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
 
     @Override
     public void onPositionUpdate(double latitude, double longitude,
-                                 float bearingDegrees, float speedMs) {
-        // Mapsforge requiere LatLong inmutables nuevos en cada update — el
-        // marker mantiene la referencia internamente.
+                                 float bearingDegrees, boolean hasBearing, float speedMs) {
         LatLong pos = new LatLong(latitude, longitude);
         lastPosition = pos;
 
-        if (positionMarker != null) {
-            positionMarker.setLatLong(pos);
-            // TODO 1.5b: aplicar bearingDegrees rotando el icono mediante un
-            // layer custom (Mapsforge Marker no soporta rotación nativa).
+        if (positionLayer != null) {
+            positionLayer.updatePosition(pos, bearingDegrees, hasBearing, speedMs);
         }
 
         if (autoCenter) {

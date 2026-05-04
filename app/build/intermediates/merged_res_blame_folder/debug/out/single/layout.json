@@ -2,9 +2,5 @@
     {
         "merged": "com.obdmap.launcher.app-mergeDebugResources-13:/layout/activity_main.xml",
         "source": "com.obdmap.launcher.app-main-16:/layout/activity_main.xml"
-    },
-    {
-        "merged": "C:\\Users\\1002m\\.gradle\\daemon\\7.6.4\\com.obdmap.launcher.app-mergeDebugResources-13:\\layout\\activity_main.xml",
-        "source": "C:\\Users\\1002m\\.gradle\\daemon\\7.6.4\\com.obdmap.launcher.app-main-16:\\layout\\activity_main.xml"
     }
 ]

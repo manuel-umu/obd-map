@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Flecha de posición direccional. La punta apunta hacia arriba (norte = 0°).
+    La rotación según el rumbo se aplica en PositionLayer via Matrix, no aquí.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Sombra/borde blanco de la flecha -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M24,2 L36,40 L24,34 L12,40 Z" />
+
+    <!-- Cuerpo azul de la flecha -->
+    <path
+        android:fillColor="#FF2196F3"
+        android:pathData="M24,6 L33,37 L24,31 L15,37 Z" />
+
+</vector>
