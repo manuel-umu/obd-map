@@ -9,13 +9,11 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 
 /**
- * Wrapper sobre {@link LocationManager} para recibir actualizaciones del GPS
- * interno de la radio a 1 Hz. No usa Google Play Services / FusedLocationProvider
- * para no añadir peso ni dependencias externas (las radios chinas suelen
- * carecer de ellos en versiones limpias).
+ * Recibe la posición del GPS interno de la radio a 1 Hz, usando el
+ * LocationManager de Android a pelo. Nada de Google Play Services: las
+ * radios chinas no suelen traerlos y tampoco los necesitamos.
  *
- * <p>El llamador es responsable de comprobar el permiso
- * {@code ACCESS_FINE_LOCATION} antes de invocar {@link #start()}.</p>
+ * Quien llame a start() debe haber comprobado antes el permiso de ubicación.
  */
 public final class GpsManager {
 
@@ -26,14 +24,13 @@ public final class GpsManager {
     private static final float MIN_DISTANCE_M = 0f;
 
     /**
-     * Callback de posición. La implementación se ejecuta en el hilo principal
-     * (es el looper en el que se registra el LocationListener).
+     * Callback de posición. Llega en el hilo principal, así que se pueden
+     * tocar vistas directamente.
      */
     public interface PositionListener {
         /**
-         * @param hasBearing {@code true} si el fix GPS incluye un bearing válido.
-         *                   Cuando es {@code false}, {@code bearingDegrees} vale 0
-         *                   y no debe usarse para rotar el marcador.
+         * @param hasBearing si es false, el fix no trae rumbo fiable:
+         *                   bearingDegrees vale 0 y no sirve para rotar la flecha
          */
         void onPositionUpdate(double latitude, double longitude,
                               float bearingDegrees, boolean hasBearing, float speedMs);
@@ -83,8 +80,8 @@ public final class GpsManager {
     }
 
     /**
-     * Empieza a recibir actualizaciones del proveedor GPS. Lanza
-     * {@link SecurityException} si no se ha concedido ACCESS_FINE_LOCATION.
+     * Empieza a escuchar el GPS. Lanza SecurityException si no tenemos
+     * el permiso de ubicación.
      */
     @SuppressLint("MissingPermission")
     public void start() throws SecurityException {
@@ -99,7 +96,7 @@ public final class GpsManager {
         active = true;
     }
 
-    /** Para de recibir actualizaciones. Idempotente. */
+    /** Deja de escuchar el GPS. Se puede llamar aunque ya esté parado. */
     public void stop() {
         if (!active || locationManager == null) {
             return;

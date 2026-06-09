@@ -7,12 +7,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * Wrapper tipado sobre {@link SharedPreferences}. Sin singletons automáticos,
- * sin inyección de dependencias: el llamador instancia con {@code new PrefsManager(context)}
- * cuando lo necesita.
- *
- * <p>Toda la persistencia del proyecto pasa por aquí. No se usan bases de datos
- * pesadas (Room/SQLite) por presupuesto de RAM.</p>
+ * Acceso tipado a SharedPreferences. Toda la persistencia de la app pasa por
+ * aquí — nada de bases de datos (Room/SQLite), que no caben en el presupuesto
+ * de RAM. Se crea con new donde haga falta; sin singletons ni inyección.
  */
 public final class PrefsManager {
 
@@ -20,18 +17,19 @@ public final class PrefsManager {
     private static final String PREFS_FILE = "obd_map_prefs";
 
     // ---------------------------------------------------------------------
-    // Claves de almacenamiento
+    // Claves de almacenamiento — privadas: el resto de la app accede siempre
+    // a través de los getters/setters tipados, nunca por clave directa.
     // ---------------------------------------------------------------------
     // MAC del adaptador ELM327 emparejado, para reconectar sin escanear.
-    public static final String KEY_OBD_MAC = "obd_mac";
+    private static final String KEY_OBD_MAC = "obd_mac";
 
     // Última posición conocida (lat/lon en float — precisión sobrada para coches
     // y la mitad de memoria que double).
-    public static final String KEY_LAST_LAT = "last_lat";
-    public static final String KEY_LAST_LON = "last_lon";
+    private static final String KEY_LAST_LAT = "last_lat";
+    private static final String KEY_LAST_LON = "last_lon";
 
     // Ruta absoluta al archivo .map de Mapsforge seleccionado por el usuario.
-    public static final String KEY_MAP_FILE_PATH = "map_file_path";
+    private static final String KEY_MAP_FILE_PATH = "map_file_path";
 
     // ---------------------------------------------------------------------
     // Estado interno
@@ -72,9 +70,7 @@ public final class PrefsManager {
         return prefs.getFloat(KEY_LAST_LON, 0f);
     }
 
-    /**
-     * Guarda la última posición conocida en una sola transacción para minimizar I/O.
-     */
+    /** Guarda lat y lon de una vez, en una sola escritura a disco. */
     public void setLastPosition(float latitude, float longitude) {
         prefs.edit()
                 .putFloat(KEY_LAST_LAT, latitude)

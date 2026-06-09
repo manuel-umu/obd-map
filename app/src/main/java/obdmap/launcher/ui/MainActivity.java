@@ -29,8 +29,9 @@ import org.mapsforge.core.model.LatLong;
 import java.io.File;
 
 /**
- * Activity principal del launcher. Gestiona los permisos en runtime, monta el
- * MapView de Mapsforge, arranca el GPS y maneja la lógica de auto-centrado.
+ * Pantalla principal del launcher: el mapa. Pide los permisos, monta el
+ * MapView, arranca el GPS y centra el mapa en el coche (salvo que el usuario
+ * lo mueva a mano, en cuyo caso aparece el botón de recentrar).
  */
 public final class MainActivity extends AppCompatActivity implements GpsManager.PositionListener {
 
@@ -147,8 +148,8 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     }
 
     /**
-     * Localiza el archivo .map, monta el MapView, añade el marcador de posición
-     * y arranca el GPS. Sólo se invoca con todos los permisos concedidos.
+     * Busca el archivo .map, monta el mapa con la flecha de posición y arranca
+     * el GPS. Solo se llama cuando ya tenemos todos los permisos.
      */
     private void initMapAndGps() {
         File mapFile = MapFileLocator.findFirstMapFile();
@@ -253,9 +254,8 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     // ------------------------------------------------------------------------
 
     /**
-     * Arranca el ObdService si hay una MAC configurada y el servicio no está ya corriendo.
-     * startForegroundService es idempotente en cuanto a duplicados: si el servicio ya
-     * existe, Android llama onStartCommand de nuevo sin crear una segunda instancia.
+     * Arranca el servicio OBD si hay adaptador configurado. No pasa nada por
+     * llamarlo de más: si el servicio ya existe, Android no crea otro.
      */
     private void maybeStartObdService() {
         String mac = prefsManager.getObdMac();

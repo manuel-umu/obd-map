@@ -15,10 +15,9 @@ import org.mapsforge.map.rendertheme.InternalRenderTheme;
 import java.io.File;
 
 /**
- * Encapsula la configuración del {@link MapView} de Mapsforge: caché de tiles,
- * lector del archivo .map y capa de renderizado. La instancia es propietaria
- * del cache y del MapFile, por lo que debe llamarse a {@link #destroy()} en el
- * onDestroy de la Activity para liberar memoria.
+ * Monta y configura el mapa de Mapsforge: caché de tiles, archivo .map y capa
+ * de renderizado. Esta clase es dueña de esos recursos, así que hay que llamar
+ * a destroy() en el onDestroy de la Activity o se queda memoria retenida.
  */
 public final class MapManager {
 
@@ -44,10 +43,9 @@ public final class MapManager {
     }
 
     /**
-     * Asocia este manager a un MapView ya inflado desde XML, monta el cache de
-     * tiles, abre el archivo .map y añade la capa renderizadora con el tema
-     * interno por defecto. El mapa se centra inicialmente en el centro del
-     * bounding box del archivo y un zoom medio.
+     * Engancha el manager a un MapView ya inflado: monta la caché, abre el
+     * archivo .map y añade la capa que dibuja los tiles. El mapa arranca
+     * centrado en el medio del archivo con zoom de calle.
      */
     public void attachToView(@NonNull MapView view, @NonNull File mapFilePath) {
         this.mapView = view;
@@ -80,10 +78,7 @@ public final class MapManager {
         view.setZoomLevel(INITIAL_ZOOM);
     }
 
-    /**
-     * Libera todos los recursos: caché de tiles, archivo .map y MapView.
-     * Debe llamarse desde Activity.onDestroy().
-     */
+    /** Libera todo: caché, archivo .map y MapView. Llamar desde onDestroy(). */
     public void destroy() {
         if (mapView != null) {
             // destroyAll() libera layers, mapFile y referencias internas.

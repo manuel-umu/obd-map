@@ -15,28 +15,25 @@ import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.layer.Layer;
 
 /**
- * Capa de Mapsforge que dibuja la posición actual del vehículo con un icono
- * rotado según el rumbo GPS. Extiende {@link Layer} directamente porque
- * {@link org.mapsforge.map.layer.overlay.Marker} no expone ningún mecanismo
- * de rotación nativa.
+ * Capa del mapa que dibuja la flecha del coche, girada según el rumbo GPS.
+ * Extiende Layer directamente porque el Marker de Mapsforge no sabe rotar.
  *
- * <p>La rotación se cachea en bloques de {@value #BUCKET_DEGREES}° para no
- * asignar un nuevo {@link android.graphics.Bitmap} en cada actualización GPS
- * (1 Hz). El array tiene exactamente {@value #CACHE_SIZE} posiciones y nunca
- * crece en tiempo de ejecución.</p>
+ * Las rotaciones se cachean en saltos de 5°: girar un bitmap es caro y el GPS
+ * actualiza cada segundo, así que cada ángulo se genera una sola vez y se
+ * reutiliza. El caché tiene tamaño fijo y no crece nunca.
  */
 public final class PositionLayer extends Layer {
 
     /**
-     * Granularidad del caché de rotaciones en grados.
-     * 5° → 72 cubos → cada bitmap de 48×48 px ARGB_8888 ≈ 9 KB → total ≤ 648 KB.
+     * Paso del caché de rotaciones: 5° → 72 huecos. Cada bitmap de 48×48
+     * ocupa ~9 KB, así que el caché completo no pasa de ~650 KB.
      */
     private static final int BUCKET_DEGREES = 5;
     private static final int CACHE_SIZE = 360 / BUCKET_DEGREES; // 72
 
     /**
-     * Umbral de velocidad por debajo del cual el GPS no genera bearing fiable.
-     * Por debajo de este valor mantenemos el último bearing conocido.
+     * Por debajo de esta velocidad el rumbo del GPS es puro ruido:
+     * nos quedamos con el último bueno para que la flecha no baile al frenar.
      */
     private static final float MIN_SPEED_FOR_BEARING_MS = 0.5f;
 
@@ -52,8 +49,8 @@ public final class PositionLayer extends Layer {
     private float lastBearing = 0f; // último bearing válido
 
     /**
-     * @param arrowDrawable Drawable direccional cuya punta apunta al norte (arriba).
-     *                      Se convierte a bitmap una sola vez en el constructor.
+     * @param arrowDrawable flecha con la punta hacia arriba (norte);
+     *                      se rasteriza a bitmap una sola vez aquí
      */
     public PositionLayer(@NonNull Drawable arrowDrawable) {
         // Convertimos el drawable a android.graphics.Bitmap una única vez.
@@ -63,13 +60,13 @@ public final class PositionLayer extends Layer {
     }
 
     /**
-     * Actualiza la posición del marcador y su rumbo.
+     * Mueve la flecha a la nueva posición y, si el rumbo es de fiar
+     * (el GPS lo da por válido y hay velocidad suficiente), la gira.
      *
-     * @param latLong     Nueva posición geográfica.
-     * @param bearing     Rumbo en grados [0, 360). Solo se aplica si {@code hasBearing} es true
-     *                    y la velocidad supera el umbral mínimo.
-     * @param hasBearing  Indica si el fix GPS incluye un bearing válido.
-     * @param speedMs     Velocidad actual en m/s, usada para decidir si el bearing es fiable.
+     * @param latLong    nueva posición
+     * @param bearing    rumbo en grados [0, 360)
+     * @param hasBearing si el fix trae rumbo válido
+     * @param speedMs    velocidad en m/s, para descartar rumbos de ruido
      */
     public void updatePosition(@NonNull LatLong latLong, float bearing,
                                boolean hasBearing, float speedMs) {
@@ -110,10 +107,7 @@ public final class PositionLayer extends Layer {
         canvas.drawBitmap(bmp, screenX + offsetX, screenY + offsetY);
     }
 
-    /**
-     * Devuelve el bitmap rotado correspondiente al ángulo dado, creándolo y
-     * cacheándolo si aún no existe para ese bucket.
-     */
+    /** Bitmap girado para ese ángulo; si no está en caché, se crea y se guarda. */
     private Bitmap getRotatedBitmap(float bearing) {
         // Normalizar bearing a [0, 360)
         float normalized = bearing % 360f;
@@ -133,10 +127,7 @@ public final class PositionLayer extends Layer {
         return rotatedCache[bucket];
     }
 
-    /**
-     * Crea un nuevo bitmap del icono de posición rotado {@code angleDegrees} grados
-     * en sentido horario respecto al norte (punta arriba = 0°).
-     */
+    /** Genera el icono girado N grados (0° = punta arriba, sentido horario). */
     private Bitmap createRotatedBitmap(float angleDegrees) {
         Matrix matrix = new Matrix();
         matrix.setRotate(
@@ -161,10 +152,7 @@ public final class PositionLayer extends Layer {
         return wrapped;
     }
 
-    /**
-     * Libera todos los bitmaps del caché y el bitmap fuente.
-     * Llamar desde el mismo hilo que {@link #onDestroy()} (UI thread).
-     */
+    /** Libera todos los bitmaps (caché y fuente). Llamar desde el hilo de UI. */
     @Override
     public void onDestroy() {
         for (int i = 0; i < CACHE_SIZE; i++) {

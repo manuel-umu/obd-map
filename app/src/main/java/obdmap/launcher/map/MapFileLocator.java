@@ -9,9 +9,8 @@ import java.io.FileFilter;
 import java.util.Locale;
 
 /**
- * Utilidad de búsqueda del archivo .map de Mapsforge en almacenamiento externo.
- * En Fase 1 sólo se inspecciona la carpeta {@code Download/} de la SD; en
- * fases posteriores se podrá configurar la ruta desde una pantalla de Ajustes.
+ * Busca el archivo .map del mapa en el almacenamiento. De momento solo mira
+ * en Download/; más adelante la ruta será configurable desde Ajustes.
  */
 public final class MapFileLocator {
 
@@ -34,10 +33,7 @@ public final class MapFileLocator {
         // Utilidad estática, no se instancia.
     }
 
-    /**
-     * Devuelve el primer archivo .map encontrado en /sdcard/Download/, o null
-     * si la carpeta no existe o no contiene ninguno.
-     */
+    /** El primer .map que haya en Download/, o null si no hay ninguno. */
     @Nullable
     public static File findFirstMapFile() {
         File downloadDir = Environment.getExternalStoragePublicDirectory(

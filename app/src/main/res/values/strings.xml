@@ -56,6 +56,8 @@
     <string name="obd_state_failed">Fallo: %1$s</string>
     <!-- Texto de la notificación cuando no hay MAC configurada. -->
     <string name="obd_notif_no_mac">Sin adaptador configurado</string>
+    <!-- Estado en la pantalla de debug cuando no hay adaptador configurado. -->
+    <string name="obd_state_no_mac">Sin adaptador OBD — selecciónalo en Ajustes</string>
 
     <!-- Pantalla de debug OBD2 (Bloque C, ítem 2.7). -->
     <string name="debug_title">Debug OBD2</string>

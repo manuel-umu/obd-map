@@ -18,37 +18,30 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
- * Lector OBD2 sobre Bluetooth SPP (ELM327). Gestiona por sí solo la conexión,
- * el handshake AT y el bucle de petición/respuesta de PIDs. El llamador solo
- * necesita:
- * <ol>
- *   <li>Instanciar con {@code new BluetoothObdReader(mac, listener)}</li>
- *   <li>Llamar a {@link #start()}</li>
- *   <li>Encolar PIDs con {@link #enqueuePid(String)}</li>
- *   <li>Llamar a {@link #stop()} al detener el servicio</li>
- * </ol>
+ * Lector OBD2 por Bluetooth (ELM327). Se encarga solo de todo: conectar,
+ * inicializar el adaptador con los comandos AT y pedir PIDs en bucle.
  *
- * <p>Todos los callbacks de {@link ObdListener} se invocan desde el hilo OBD
- * interno; el Bloque C debe hacer {@code Handler.post} si actualiza la UI.</p>
+ * Uso: crear con la MAC y un listener, llamar a start(), encolar PIDs con
+ * enqueuePid() y llamar a stop() al terminar.
+ *
+ * Ojo: los callbacks del listener llegan desde el hilo OBD interno, no desde
+ * el hilo de UI. Quien actualice vistas debe postear al main thread.
  */
 public final class BluetoothObdReader {
 
     private static final String TAG = "BluetoothObdReader";
 
-    /** UUID estándar del perfil Serial Port Profile (SPP). */
+    /** UUID estándar del perfil serie Bluetooth (SPP). */
     private static final UUID SPP_UUID =
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    /** Timeout de lectura de una respuesta AT o PID (milisegundos). */
+    /** Cuánto esperamos la respuesta de un comando antes de darla por perdida (ms). */
     private static final int READ_TIMEOUT_MS = 3000;
 
-    /** Prompts que delimitan fin de respuesta del ELM327. */
+    /** El ELM327 termina cada respuesta con este carácter. */
     private static final char PROMPT_CHAR = '>';
 
-    /**
-     * Tamaño de la cola de comandos pendientes. Se descartan los más antiguos
-     * cuando se llena para no bloquear nunca al llamador (poll sin espera).
-     */
+    /** Tamaño de la cola de comandos. Si se llena, se descarta el más antiguo. */
     private static final int COMMAND_QUEUE_CAPACITY = 16;
 
     // Backoff exponencial: 1s, 2s, 4s, 8s, 16s, tope en 30s.
@@ -56,8 +49,9 @@ public final class BluetoothObdReader {
     private static final long BACKOFF_MAX_MS = 30_000L;
 
     /**
-     * Tiempo mínimo en estado READY antes de resetear el backoff.
-     * Evita que una conexión frágil (cae a los 2s) resetee el contador.
+     * Tiempo mínimo conectados antes de resetear el backoff a 1s.
+     * Así una conexión frágil que se cae cada pocos segundos no
+     * machaca al adaptador con reintentos inmediatos.
      */
     private static final long BACKOFF_RESET_STABLE_MS = 10_000L;
 
@@ -79,10 +73,12 @@ public final class BluetoothObdReader {
     private volatile boolean running = false;
     @Nullable private Thread obdThread;
 
-    // Recursos de conexión
-    @Nullable private BluetoothSocket socket;
-    @Nullable private InputStream inputStream;
-    @Nullable private OutputStream outputStream;
+    // Recursos de conexión. Los usa el hilo OBD, pero stop() cierra el socket
+    // desde el hilo llamante para desbloquear la lectura: volatile garantiza
+    // que ambos hilos vean siempre la referencia viva (no una caché obsoleta).
+    @Nullable private volatile BluetoothSocket socket;
+    @Nullable private volatile InputStream inputStream;
+    @Nullable private volatile OutputStream outputStream;
 
     // Marca de tiempo en que se alcanzó READY por última vez (para backoff reset)
     private long readySinceMs = 0L;
@@ -147,11 +143,11 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Encola un PID OBD2 para ser enviado en el siguiente ciclo del bucle.
-     * Si la cola está llena, descarta el comando más antiguo para hacer hueco:
-     * la telemetría en tiempo real prefiere el dato nuevo sobre el dato viejo.
+     * Encola un PID para enviarlo en el siguiente ciclo. Si la cola está llena
+     * se descarta el más antiguo: en telemetría en vivo el dato nuevo siempre
+     * vale más que el viejo.
      *
-     * @param pidCommand comando de 4 chars (p. ej. {@code "010C"} para RPM)
+     * @param pidCommand comando de 4 caracteres, p. ej. "010C" para RPM
      */
     public void enqueuePid(@NonNull String pidCommand) {
         // Si la cola está llena, sacrificamos el comando más antiguo.
@@ -175,14 +171,24 @@ public final class BluetoothObdReader {
         while (running) {
             setState(ObdState.CONNECTING);
 
-            if (!validatePreconditions()) {
-                // BT no disponible o MAC inválida: fallo definitivo, no reintentamos.
+            int precondition = checkPreconditions();
+            if (precondition == PRECONDITION_FATAL) {
+                // Sin adaptador o MAC inválida: irrecuperable, el hilo termina.
                 setState(ObdState.FAILED);
                 return;
             }
+            if (precondition == PRECONDITION_RETRY) {
+                // Bluetooth desactivado: en el coche puede parpadear (arranque,
+                // cortes de alimentación). Reintentamos con backoff en vez de morir.
+                setState(ObdState.RECONNECTING);
+                if (!sleepBackoff()) {
+                    return;
+                }
+                continue;
+            }
 
             if (!connectSocket()) {
-                // connectSocket ya puso estado RECONNECTING; hacemos backoff y reintentamos.
+                setState(ObdState.RECONNECTING);
                 if (!sleepBackoff()) {
                     return; // stop() llamado durante el sleep
                 }
@@ -231,25 +237,36 @@ public final class BluetoothObdReader {
     // =========================================================================
     // Validación previa
     // =========================================================================
-    private boolean validatePreconditions() {
+    /** Precondiciones cumplidas: se puede intentar la conexión. */
+    private static final int PRECONDITION_OK    = 0;
+    /** Fallo transitorio (Bluetooth desactivado): reintentar con backoff. */
+    private static final int PRECONDITION_RETRY = 1;
+    /** Fallo permanente (sin adaptador, MAC inválida): estado FAILED y fin. */
+    private static final int PRECONDITION_FATAL = 2;
+
+    /**
+     * Comprueba las precondiciones distinguiendo fallos permanentes (no tiene
+     * sentido reintentar) de transitorios (el BT puede volver a encenderse).
+     */
+    private int checkPreconditions() {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) {
             notifyError("", "Bluetooth no disponible en este dispositivo");
-            return false;
-        }
-        if (!adapter.isEnabled()) {
-            notifyError("", "Bluetooth desactivado");
-            return false;
+            return PRECONDITION_FATAL;
         }
         if (mac == null || mac.isEmpty()) {
             notifyError("", "MAC del ELM327 no configurada");
-            return false;
+            return PRECONDITION_FATAL;
         }
         if (!BluetoothAdapter.checkBluetoothAddress(mac)) {
             notifyError("", "MAC inválida: " + mac);
-            return false;
+            return PRECONDITION_FATAL;
         }
-        return true;
+        if (!adapter.isEnabled()) {
+            notifyError("", "Bluetooth desactivado");
+            return PRECONDITION_RETRY;
+        }
+        return PRECONDITION_OK;
     }
 
     // =========================================================================
@@ -290,8 +307,9 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Secuencia de inicialización del ELM327. Cada comando se envía y se espera
-     * una respuesta antes de continuar. Si alguno falla, devuelve {@code false}.
+     * Inicializa el ELM327 con la secuencia AT clásica: reset, sin echo,
+     * sin saltos de línea extra y protocolo automático. Cada comando espera
+     * su respuesta antes del siguiente. Si alguno falla, devuelve false.
      */
     private boolean performHandshake() {
         setState(ObdState.INITIALIZING);
@@ -322,8 +340,8 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Envía un comando AT y comprueba que la respuesta contenga {@code expectedToken}.
-     * La comparación es case-insensitive para tolerar variantes de firmware ELM327.
+     * Envía un comando y comprueba que la respuesta contiene el texto esperado.
+     * Ignora mayúsculas/minúsculas porque cada firmware ELM327 responde a su manera.
      */
     private boolean sendAndExpect(@NonNull String command, @NonNull String expectedToken) {
         String response = sendCommand(command);
@@ -335,9 +353,9 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Extrae comandos de la cola y los envía al ELM327 hasta que {@link #running}
-     * sea false o se produzca un error de I/O. Cuando retorna, el llamador
-     * comprueba {@link #running} para distinguir stop() voluntario de caída.
+     * Bucle principal de trabajo: va sacando PIDs de la cola y enviándolos
+     * hasta que paren el reader o se caiga la conexión. Al volver, runLoop
+     * mira `running` para distinguir una parada voluntaria de una caída.
      */
     private void pumpPidLoop() {
         while (running) {
@@ -370,10 +388,9 @@ public final class BluetoothObdReader {
     // =========================================================================
 
     /**
-     * Envía {@code command} al ELM327 y lee la respuesta completa (hasta el
-     * carácter {@code >}). Usa los buffers reutilizables de instancia.
+     * Envía un comando al ELM327 y espera la respuesta completa (hasta el '>').
      *
-     * @return la respuesta como String, o {@code null} si hubo timeout o error de I/O
+     * @return la respuesta, o null si hubo timeout o se perdió la conexión
      */
     @Nullable
     private String sendCommand(@NonNull String command) {
@@ -401,11 +418,11 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Lee bytes del stream hasta encontrar el prompt {@code >}, con timeout.
-     * Reutiliza {@link #readBuffer} y {@link #responseBuffer}; no asigna objetos
-     * por llamada salvo el String final devuelto.
+     * Lee del stream hasta encontrar el '>' que cierra cada respuesta, con
+     * timeout. Reutiliza los buffers de instancia: lo único que se crea por
+     * llamada es el String final.
      *
-     * @return respuesta acumulada (sin el {@code >}), o {@code null} si timeout/error
+     * @return la respuesta sin el '>', o null si hubo timeout o error
      */
     @Nullable
     private String readUntilPrompt(@NonNull InputStream in) throws IOException {
@@ -454,18 +471,20 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Parsea la respuesta hexadecimal del ELM327 para un PID dado y notifica
-     * al listener con el valor entero calculado.
+     * Interpreta la respuesta del ELM327 para un PID y avisa al listener con
+     * el valor ya decodificado. Una respuesta normal tiene la forma
+     * "41 XX AA BB": 41 = modo 01, XX = PID, y AA/BB son los datos.
      *
-     * <p>El formato estándar de respuesta OBD2 modo 01 es:
-     * {@code 41 XX AA BB ...} donde XX es el PID y AA/BB son bytes de datos.
-     * No usamos {@code String.split} para evitar allocations: extraemos los
-     * tokens hex directamente con índices sobre el {@link #responseBuffer}.</p>
-     *
-     * @param pid      PID enviado (p. ej. {@code "010C"})
-     * @param response respuesta cruda del ELM327 (ya trimmeada, sin prompt)
+     * @param pid      PID que se envió, p. ej. "010C"
+     * @param response respuesta cruda, ya sin espacios sobrantes ni el '>'
      */
     private void parsePidResponse(@NonNull String pid, @NonNull String response) {
+        // "SEARCHING..." es transitorio: con ATSP0 el ELM327 negocia el protocolo
+        // en las primeras peticiones. No es un error; simplemente aún no hay dato.
+        if (response.startsWith("SEARCHING")) {
+            return;
+        }
+
         // Respuestas de error estándar del ELM327
         if (response.equals("NO DATA") || response.equals("?")
                 || response.equals("ERROR") || response.equals("UNABLE TO CONNECT")) {
@@ -484,24 +503,10 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Extrae el valor entero de la respuesta OBD2 para el PID dado.
+     * Saca los bytes de datos de la respuesta y deja la decodificación en manos
+     * de ObdPids.decode(), que es donde viven todas las fórmulas y unidades.
      *
-     * <p>Fórmulas según SAE J1979 / ISO 15765:
-     * <ul>
-     *   <li>{@code 010C} RPM: (A*256 + B) / 4</li>
-     *   <li>{@code 010D} velocidad: A (km/h directo)</li>
-     *   <li>{@code 0104} carga: (A * 100) / 255</li>
-     *   <li>{@code 0110} MAF: (A*256 + B) — punto fijo g/s×100; dividir entre 100.0 para g/s reales</li>
-     *   <li>{@code 0111} posición acelerador: (A * 100) / 255 → %</li>
-     *   <li>{@code 0105} temp. refrigerante: A - 40 → °C (puede ser negativo)</li>
-     *   <li>{@code 010F} temp. admisión (IAT): A - 40 → °C (puede ser negativo)</li>
-     *   <li>{@code 010B} presión absoluta colector (MAP): A → kPa</li>
-     *   <li>{@code 015E} tasa de combustible: (A*256 + B) — punto fijo raw; dividir entre 20.0 para L/h</li>
-     * </ul>
-     * Para PIDs desconocidos devolvemos los primeros dos bytes combinados
-     * para no perder datos que el Bloque C pueda interpretar.</p>
-     *
-     * @return valor calculado, o {@link Integer#MIN_VALUE} si la respuesta es inválida
+     * @return valor decodificado, o Integer.MIN_VALUE si la respuesta no vale
      */
     private int extractObdValue(@NonNull String response, @NonNull String pid) {
         // La respuesta puede incluir espacios: "41 0C 1A F8" o sin espacios "410C1AF8".
@@ -514,53 +519,14 @@ public final class BluetoothObdReader {
         // bytes[0] = 0x41 (modo 01 respuesta), bytes[1] = PID, bytes[2..] = datos.
         int a = bytes[2];
         int b = bytes.length > 3 ? bytes[3] : 0;
-
-        // Comparamos el PID en mayúsculas (ya viene así del caller).
-        if ("010C".equals(pid)) {
-            // RPM real = (A*256 + B) / 4. Resolución 0,25 rpm redondeada a entero.
-            return ((a << 8) | b) / 4;
-        } else if ("010D".equals(pid)) {
-            // Velocidad en km/h, directa.
-            return a;
-        } else if ("0104".equals(pid)) {
-            // Carga del motor en porcentaje: (A * 100) / 255.
-            return (a * 100) / 255;
-        } else if ("0110".equals(pid)) {
-            // MAF en formato punto fijo g/s×100: valor = (A*256 + B).
-            // Excepción conocida: NO se divide aquí porque en ralentí (~2-4 g/s) la
-            // división entera entre 100 perdería toda la precisión.
-            return (a << 8) | b;
-        } else if ("0111".equals(pid)) {
-            // Posición del acelerador: (A * 100) / 255 → porcentaje entero.
-            return (a * 100) / 255;
-        } else if ("0105".equals(pid)) {
-            // Temperatura del refrigerante: A - 40 → °C. Rango real -40..+215 °C.
-            return a - 40;
-        } else if ("010F".equals(pid)) {
-            // Temperatura de admisión (IAT): A - 40 → °C. Mismo encoding que 0105.
-            return a - 40;
-        } else if ("010B".equals(pid)) {
-            // Presión absoluta del colector (MAP): A → kPa directo.
-            return a;
-        } else if ("015E".equals(pid)) {
-            // Tasa de combustible del motor (Engine Fuel Rate).
-            // La respuesta válida empieza por bytes 41 5E (el parser ya verifica 0x41
-            // como primer byte de modo; 0x5E = 94 = PID del modo 01).
-            // Fórmula real: L/h = (A*256 + B) / 20.0. Se devuelve el raw sin dividir
-            // para no perder precisión; el consumidor divide entre 20.
-            return (a << 8) | b;
-        } else {
-            // PID genérico: devolvemos los primeros dos bytes de datos combinados.
-            return (a << 8) | b;
-        }
+        return ObdPids.decode(pid, a, b);
     }
 
     /**
-     * Extrae todos los tokens hexadecimales de una cadena de respuesta OBD2,
-     * sin crear arrays intermedios de tokens de String.
+     * Convierte la respuesta de texto ("41 0C 1A F8") en bytes numéricos,
+     * sin trocear el String (nada de split, que crea arrays a lo loco).
      *
-     * @return array de valores enteros (0-255) por byte, o {@code null} si no hay
-     *         ningún token hex válido
+     * @return un byte por posición (0-255), o null si no había nada hex válido
      */
     @Nullable
     private int[] extractHexBytes(@NonNull String response) {
@@ -601,11 +567,7 @@ public final class BluetoothObdReader {
         return trimmed;
     }
 
-    /**
-     * Convierte un carácter hex ('0'-'9', 'A'-'F', 'a'-'f') a su valor entero.
-     *
-     * @return valor 0-15, o -1 si el carácter no es hex válido
-     */
+    /** Valor numérico de un carácter hex (0-15), o -1 si no es hex. */
     private static int hexDigit(char c) {
         if (c >= '0' && c <= '9') return c - '0';
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
@@ -618,10 +580,10 @@ public final class BluetoothObdReader {
     // =========================================================================
 
     /**
-     * Duerme el hilo OBD el tiempo de backoff actual y duplica para la próxima vez.
+     * Espera el tiempo de backoff actual y lo duplica para la próxima vez.
      *
-     * @return {@code true} si el sleep completó; {@code false} si fue interrumpido
-     *         por {@link #stop()} y el bucle debe terminar
+     * @return true si la espera terminó normal; false si nos interrumpió stop()
+     *         y hay que salir del bucle
      */
     private boolean sleepBackoff() {
         long delay = currentBackoffMs;
@@ -647,6 +609,9 @@ public final class BluetoothObdReader {
     // =========================================================================
 
     private void setState(@ObdState.State int newState) {
+        if (newState == state) {
+            return; // sin cambio real: no renotificamos al listener
+        }
         state = newState;
         listener.onStateChanged(newState);
     }
@@ -658,10 +623,7 @@ public final class BluetoothObdReader {
         listener.onObdError(pid, description);
     }
 
-    /**
-     * Cierra los streams y el socket de la conexión activa de forma silenciosa.
-     * No toca los campos de instancia; los pone a null el llamador.
-     */
+    /** Cierra streams y socket sin protestar, y deja los campos a null. */
     private void closeConnection() {
         closeQuietly(inputStream);
         closeQuietly(outputStream);
@@ -672,8 +634,8 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Cierra un {@link java.io.Closeable} ignorando cualquier excepción.
-     * Centralizado aquí para no repetir try/catch vacíos por todo el código.
+     * Cierra cualquier recurso ignorando errores. Centralizado para no
+     * repetir try/catch vacíos por todo el fichero.
      */
     private static void closeQuietly(@Nullable java.io.Closeable closeable) {
         if (closeable == null) {
@@ -687,8 +649,8 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Comprueba si {@code source} contiene {@code token} ignorando mayúsculas/minúsculas,
-     * sin llamar a {@code toUpperCase()} (que crea un String nuevo).
+     * Como String.contains() pero sin distinguir mayúsculas de minúsculas,
+     * y sin crear Strings nuevos por el camino (nada de toUpperCase).
      */
     private static boolean containsIgnoreCase(@NonNull String source, @NonNull String token) {
         int sourceLen = source.length();

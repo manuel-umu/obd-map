@@ -5,23 +5,20 @@ import androidx.annotation.NonNull;
 import obdmap.launcher.obd.ObdState;
 
 /**
- * Contrato para que la UI reciba actualizaciones del {@link ObdService} sin
- * usar broadcasts. Los callbacks llegan siempre en el main thread.
+ * Lo que la UI escucha del ObdService. A diferencia de los callbacks del
+ * reader, estos llegan siempre en el main thread: se pueden tocar vistas
+ * directamente.
  */
 public interface ObdServiceListener {
 
-    /**
-     * El estado del reader cambió.
-     *
-     * @param state nuevo estado; uno de los valores de {@link ObdState}
-     */
+    /** La conexión OBD cambió de estado (valores de ObdState). */
     void onObdStateChanged(@ObdState.State int state);
 
     /**
-     * Llegó un nuevo valor bruto para un PID.
+     * Llegó un dato nuevo de un PID.
      *
-     * @param pid      código de 4 caracteres (p. ej. {@code "010C"})
-     * @param rawValue valor entero crudo tal como lo interpreta el reader
+     * @param pid      qué PID, p. ej. "010C"
+     * @param rawValue valor decodificado, en las unidades que documenta ObdPids
      */
     void onObdDataUpdated(@NonNull String pid, int rawValue);
 }

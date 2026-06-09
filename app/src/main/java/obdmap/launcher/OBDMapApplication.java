@@ -5,10 +5,9 @@ import android.app.Application;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 
 /**
- * Application class del launcher. Su única responsabilidad es inicializar el
- * {@code AndroidGraphicFactory} de Mapsforge ANTES de que se infle cualquier
- * {@code MapView} (incluso desde XML), porque el factory es un singleton que
- * la librería necesita para crear bitmaps, paths y otros recursos gráficos.
+ * Application de la app. Solo hace una cosa: inicializar el motor gráfico de
+ * Mapsforge antes de que se infle ningún MapView (también los de XML), porque
+ * la librería lo necesita listo para crear bitmaps y demás.
  */
 public final class OBDMapApplication extends Application {
 

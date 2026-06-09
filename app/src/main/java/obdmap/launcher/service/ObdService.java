@@ -1,12 +1,8 @@
 package obdmap.launcher.service;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -15,63 +11,34 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 
 import obdmap.launcher.BuildConfig;
 import obdmap.launcher.R;
 import obdmap.launcher.obd.BluetoothObdReader;
 import obdmap.launcher.obd.FuelCalculator;
 import obdmap.launcher.obd.ObdListener;
+import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
 
 /**
- * Foreground Service que mantiene el ciclo de vida del {@link BluetoothObdReader}
- * durante el trayecto. Expone los datos a la UI mediante un Binder local para
- * no añadir la dependencia de LocalBroadcastManager (no está en el classpath).
+ * Foreground Service que mantiene vivo el lector OBD durante todo el trayecto,
+ * aunque la pantalla cambie de Activity. Guarda los últimos valores de cada
+ * PID y se los sirve a la UI a través de un Binder local (sin broadcasts).
  *
- * <p>El polling de PIDs corre en un {@link HandlerThread} propio del servicio
- * para no tocar el UI thread.</p>
+ * El polling corre en su propio HandlerThread; el hilo de UI no se toca.
  */
 public final class ObdService extends Service implements ObdListener {
 
     private static final String TAG = "ObdService";
 
-    // -------------------------------------------------------------------------
-    // Notificación persistente
-    // -------------------------------------------------------------------------
-    static final String NOTIF_CHANNEL_ID   = "obd_service_channel";
-    static final String NOTIF_CHANNEL_NAME = "OBD-Map activo";
-    static final String NOTIF_CHANNEL_DESC = "Mantiene la lectura de datos OBD2 en segundo plano";
-    private static final int NOTIF_ID = 1001;
+    // Los PIDs y sus fórmulas viven en ObdPids (fuente única de verdad).
+    // Aquí solo se decide CUÁNDO se sondea cada uno (rápidos vs lentos).
 
-    // -------------------------------------------------------------------------
-    // PIDs rápidos (cada ciclo) y lentos (cada SLOW_CYCLE_COUNT ciclos)
-    // -------------------------------------------------------------------------
-
-    // --- PIDs rápidos: se encolan en cada ciclo de POLL_INTERVAL_MS ---
-    private static final String PID_RPM        = "010C";
-    private static final String PID_SPEED      = "010D";
-    private static final String PID_MAF        = "0110";
-    private static final String PID_FUEL_RATE  = "015E";
-    private static final String PID_THROTTLE   = "0111";
-
-    // --- PIDs lentos: se encolan cada SLOW_CYCLE_COUNT ciclos ---
-    private static final String PID_LOAD       = "0104";
-    private static final String PID_COOLANT    = "0105";
-    private static final String PID_IAT        = "010F";
-    private static final String PID_MAP        = "010B";
-
-    /**
-     * Periodo de polling en milisegundos: 200 ms = 5 Hz.
-     * Dentro del rango 5-10 Hz definido en el CLAUDE.md.
-     */
+    /** Cada cuánto se piden los PIDs rápidos: 200 ms = 5 Hz. */
     private static final long POLL_INTERVAL_MS = 200L;
 
-    /**
-     * Número de ciclos rápidos entre cada ronda de PIDs lentos.
-     * 25 ciclos × 200 ms = 5 s por muestra de los PIDs lentos.
-     */
+    /** Los PIDs lentos van una vez cada 25 ciclos (25 × 200 ms = 5 s). */
     private static final int SLOW_CYCLE_COUNT = 25;
 
     // -------------------------------------------------------------------------
@@ -99,6 +66,9 @@ public final class ObdService extends Service implements ObdListener {
 
     /** Calculadora de consumo; instanciada una vez, sin dependencias externas. */
     private final FuelCalculator fuelCalculator = new FuelCalculator();
+
+    /** Gestiona la notificación persistente del foreground service. */
+    @Nullable private ObdNotifications notifications;
 
     /** Contador de ciclos del polling para escalonar los PIDs lentos. */
     private int pollCycleCounter = 0;
@@ -129,11 +99,10 @@ public final class ObdService extends Service implements ObdListener {
     private final IBinder binder = new LocalBinder();
 
     /**
-     * Binder que la Activity usa para obtener la referencia al servicio
-     * y registrar/desregistrar su listener sin IntentFilter ni broadcasts.
+     * Binder local: la Activity hace bind y con getService() obtiene la
+     * instancia viva del servicio. Sin broadcasts ni IntentFilters.
      */
     public final class LocalBinder extends Binder {
-        /** @return la instancia viva del servicio. */
         public ObdService getService() {
             return ObdService.this;
         }
@@ -150,20 +119,23 @@ public final class ObdService extends Service implements ObdListener {
         PrefsManager prefs = new PrefsManager(this);
         String mac = prefs.getObdMac();
 
+        notifications = new ObdNotifications(this);
+        notifications.createChannel();
+
         if (mac == null || mac.isEmpty() || !android.bluetooth.BluetoothAdapter.checkBluetoothAddress(mac)) {
             if (BuildConfig.DEBUG) {
                 Log.w(TAG, "MAC inválida o no configurada — servicio detenido sin lanzar reader");
             }
             // Necesitamos startForeground antes de stopSelf en API 26+
             // para evitar ANR de "Context.startForegroundService() did not call startForeground()".
-            createNotificationChannel();
-            startForeground(NOTIF_ID, buildNotification(getString(R.string.obd_notif_no_mac)));
+            startForeground(ObdNotifications.NOTIFICATION_ID,
+                    notifications.build(getString(R.string.obd_notif_no_mac)));
             stopSelf();
             return;
         }
 
-        createNotificationChannel();
-        startForeground(NOTIF_ID, buildNotification(getString(R.string.obd_state_connecting)));
+        startForeground(ObdNotifications.NOTIFICATION_ID,
+                notifications.build(getString(R.string.obd_state_connecting)));
 
         pollingThread = new HandlerThread("obd-poll");
         pollingThread.start();
@@ -208,10 +180,8 @@ public final class ObdService extends Service implements ObdListener {
     // =========================================================================
 
     /**
-     * Registra un listener que recibirá actualizaciones de estado y datos en el
-     * main thread. Solo puede haber un listener activo a la vez.
-     *
-     * @param listener listener a registrar, o {@code null} para desregistrar
+     * Registra quién recibe las actualizaciones (en el main thread).
+     * Solo puede haber uno a la vez; pasar null para desregistrar.
      */
     public void setServiceListener(@Nullable ObdServiceListener listener) {
         // No se necesita sincronización: las Activities hacen bind/unbind en el
@@ -246,18 +216,16 @@ public final class ObdService extends Service implements ObdListener {
     }
 
     /**
-     * Temperatura del refrigerante en °C (PID 0105).
-     * {@link Integer#MIN_VALUE} indica que aún no hay dato.
-     * Puede devolver valores negativos (frío extremo).
+     * Temperatura del refrigerante en °C (PID 0105). Puede ser negativa,
+     * así que el "sin dato" es Integer.MIN_VALUE, no -1.
      */
     public int getLastCoolant() {
         return lastCoolant;
     }
 
     /**
-     * Temperatura de admisión en °C (PID 010F, IAT).
-     * {@link Integer#MIN_VALUE} indica que aún no hay dato.
-     * Puede devolver valores negativos.
+     * Temperatura del aire de admisión en °C (PID 010F). Igual que el
+     * refrigerante: sin dato = Integer.MIN_VALUE.
      */
     public int getLastIat() {
         return lastIat;
@@ -269,43 +237,29 @@ public final class ObdService extends Service implements ObdListener {
     }
 
     /**
-     * Raw del PID 015E (Engine Fuel Rate). Dividir entre 20 para obtener L/h.
-     * -1 = sin dato aún; 0 = ECU respondió con cero.
+     * Caudal de combustible en bruto (PID 015E): dividir entre 20 para L/h.
+     * -1 = sin dato aún; 0 = la ECU respondió con cero.
      */
     public int getLastFuelRateRaw() {
         return lastFuelRateRaw;
     }
 
-    /**
-     * Consumo instantáneo en L/h calculado por {@link FuelCalculator}.
-     * Devuelve {@link Float#NaN} si no hay datos suficientes.
-     */
+    /** Consumo instantáneo en L/h, o NaN si aún no se puede calcular. */
     public float getInstantLh() {
         return fuelCalculator.getInstantLh();
     }
 
-    /**
-     * Consumo instantáneo en L/100km.
-     * Devuelve {@link Float#NaN} si la velocidad es menor que
-     * {@link FuelCalculator#MIN_SPEED_KMH} o si no hay datos.
-     */
+    /** Consumo instantáneo en L/100km, o NaN si vamos casi parados o sin dato. */
     public float getInstantL100km() {
         return fuelCalculator.getInstantL100km();
     }
 
-    /**
-     * Consumo medio en L/100km sobre la ventana de los últimos 5 minutos.
-     * Devuelve {@link Float#NaN} si no hay muestras suficientes.
-     */
+    /** Consumo medio de los últimos 5 minutos en L/100km, o NaN si no hay muestras. */
     public float getAverageL100km() {
         return fuelCalculator.getAverageL100km(System.currentTimeMillis());
     }
 
-    /**
-     * Método de cálculo de consumo activo.
-     * Uno de {@link FuelCalculator#METHOD_NONE}, {@link FuelCalculator#METHOD_FUEL_RATE},
-     * {@link FuelCalculator#METHOD_MAF}, {@link FuelCalculator#METHOD_SPEED_DENSITY}.
-     */
+    /** Qué método de consumo está activo (constantes METHOD_* de FuelCalculator). */
     public int getFuelMethod() {
         return fuelCalculator.getActiveMethod();
     }
@@ -341,7 +295,9 @@ public final class ObdService extends Service implements ObdListener {
             stopPolling();
         }
 
-        updateNotification(state, null);
+        if (notifications != null) {
+            notifications.update(state);
+        }
 
         mainHandler.post(new Runnable() {
             @Override
@@ -385,41 +341,37 @@ public final class ObdService extends Service implements ObdListener {
     // =========================================================================
 
     private void storeValue(@NonNull String pid, int rawValue) {
-        if (PID_RPM.equals(pid)) {
+        if (ObdPids.RPM.equals(pid)) {
             lastRpm = rawValue;
-        } else if (PID_SPEED.equals(pid)) {
+        } else if (ObdPids.SPEED.equals(pid)) {
             lastSpeed = rawValue;
             fuelCalculator.onSpeedUpdated(rawValue);
-        } else if (PID_LOAD.equals(pid)) {
+        } else if (ObdPids.LOAD.equals(pid)) {
             lastLoad = rawValue;
-        } else if (PID_MAF.equals(pid)) {
+        } else if (ObdPids.MAF.equals(pid)) {
             fuelCalculator.onMafUpdated(rawValue);
-        } else if (PID_FUEL_RATE.equals(pid)) {
+        } else if (ObdPids.FUEL_RATE.equals(pid)) {
             lastFuelRateRaw = rawValue;
             fuelCalculator.onFuelRateUpdated(rawValue);
-        } else if (PID_THROTTLE.equals(pid)) {
+        } else if (ObdPids.THROTTLE.equals(pid)) {
             lastThrottle = rawValue;
             // Último PID rápido del ciclo: registrar UNA muestra por ciclo (~5 Hz).
             // Así el ring buffer de 1600 entradas cubre ~320 s ≈ la ventana de 5 min.
             fuelCalculator.addSample(System.currentTimeMillis());
-        } else if (PID_COOLANT.equals(pid)) {
+        } else if (ObdPids.COOLANT.equals(pid)) {
             lastCoolant = rawValue;
-        } else if (PID_IAT.equals(pid)) {
+        } else if (ObdPids.IAT.equals(pid)) {
             lastIat = rawValue;
-        } else if (PID_MAP.equals(pid)) {
+        } else if (ObdPids.MAP.equals(pid)) {
             lastMapKpa = rawValue;
         }
-
     }
 
     // =========================================================================
     // Polling de PIDs
     // =========================================================================
 
-    /**
-     * Programa la primera ronda de polling en el HandlerThread del servicio.
-     * Idempotente: si ya está activo no hace nada.
-     */
+    /** Arranca el polling si no estaba ya en marcha. */
     private void startPolling() {
         if (pollingActive || pollingHandler == null) {
             return;
@@ -438,18 +390,12 @@ public final class ObdService extends Service implements ObdListener {
     }
 
     /**
-     * Runnable de polling escalonado.
+     * Polling escalonado. El ELM327 no da abasto con 9 PIDs a 5 Hz, así que
+     * se reparten: los rápidos (RPM, velocidad, MAF, caudal, acelerador) van
+     * en cada ciclo; los lentos (carga, temperaturas, MAP) solo una vez cada
+     * 5 segundos, que para una temperatura sobra.
      *
-     * <p>El ELM327 no puede procesar ~9 PIDs a 5 Hz simultáneamente sin acumular
-     * retardos. La solución es dividirlos en dos grupos:
-     * <ul>
-     *   <li><b>Rápidos</b> (cada ciclo, 5 Hz): RPM, velocidad, MAF, fuel rate, acelerador.</li>
-     *   <li><b>Lentos</b> (cada {@link #SLOW_CYCLE_COUNT} ciclos, ≈0,2 Hz): carga, refrigerante, IAT, MAP.</li>
-     * </ul>
-     * El contador {@link #pollCycleCounter} es un campo de instancia de int primitivo
-     * para no crear ningún objeto por ciclo.</p>
-     *
-     * <p>Corre en el HandlerThread del servicio, no en el UI thread.</p>
+     * Corre en el HandlerThread del servicio, nunca en el de UI.
      */
     private final Runnable pollRunnable = new Runnable() {
         @Override
@@ -459,20 +405,20 @@ public final class ObdService extends Service implements ObdListener {
             }
 
             // --- PIDs rápidos: siempre ---
-            reader.enqueuePid(PID_RPM);
-            reader.enqueuePid(PID_SPEED);
-            reader.enqueuePid(PID_MAF);
-            reader.enqueuePid(PID_FUEL_RATE);
-            reader.enqueuePid(PID_THROTTLE);
+            reader.enqueuePid(ObdPids.RPM);
+            reader.enqueuePid(ObdPids.SPEED);
+            reader.enqueuePid(ObdPids.MAF);
+            reader.enqueuePid(ObdPids.FUEL_RATE);
+            reader.enqueuePid(ObdPids.THROTTLE);
 
             // --- PIDs lentos: una vez cada SLOW_CYCLE_COUNT ciclos ---
             pollCycleCounter++;
             if (pollCycleCounter >= SLOW_CYCLE_COUNT) {
                 pollCycleCounter = 0;
-                reader.enqueuePid(PID_LOAD);
-                reader.enqueuePid(PID_COOLANT);
-                reader.enqueuePid(PID_IAT);
-                reader.enqueuePid(PID_MAP);
+                reader.enqueuePid(ObdPids.LOAD);
+                reader.enqueuePid(ObdPids.COOLANT);
+                reader.enqueuePid(ObdPids.IAT);
+                reader.enqueuePid(ObdPids.MAP);
             }
 
             if (pollingActive && pollingHandler != null) {
@@ -481,67 +427,4 @@ public final class ObdService extends Service implements ObdListener {
         }
     };
 
-    // =========================================================================
-    // Notificación
-    // =========================================================================
-
-    /**
-     * Crea el canal de notificación requerido en API >= 26.
-     * En API 24/25 esta llamada es un no-op seguro.
-     */
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    NOTIF_CHANNEL_ID,
-                    NOTIF_CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription(NOTIF_CHANNEL_DESC);
-            // Sin sonido ni vibración: es una notificación permanente de estado.
-            channel.setSound(null, null);
-
-            NotificationManager nm = getSystemService(NotificationManager.class);
-            if (nm != null) {
-                nm.createNotificationChannel(channel);
-            }
-        }
-    }
-
-    @NonNull
-    private Notification buildNotification(@NonNull String contentText) {
-        return new NotificationCompat.Builder(this, NOTIF_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_obd_notif)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(contentText)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build();
-    }
-
-    /**
-     * Actualiza el texto de la notificación persistente para reflejar el estado
-     * actual del reader sin recrear el canal ni interrumpir al usuario.
-     */
-    private void updateNotification(@ObdState.State int state, @Nullable String extra) {
-        String text = stateToNotifText(state);
-        if (extra != null && !extra.isEmpty()) {
-            text = text + ": " + extra;
-        }
-        Notification notif = buildNotification(text);
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm != null) {
-            nm.notify(NOTIF_ID, notif);
-        }
-    }
-
-    @NonNull
-    private String stateToNotifText(@ObdState.State int state) {
-        switch (state) {
-            case ObdState.CONNECTING:    return getString(R.string.obd_state_connecting);
-            case ObdState.INITIALIZING:  return getString(R.string.obd_state_initializing);
-            case ObdState.READY:         return getString(R.string.obd_state_connected);
-            case ObdState.RECONNECTING:  return getString(R.string.obd_state_reconnecting);
-            case ObdState.FAILED:        return getString(R.string.obd_state_failed_short);
-            default:                     return getString(R.string.obd_state_connecting);
-        }
-    }
 }

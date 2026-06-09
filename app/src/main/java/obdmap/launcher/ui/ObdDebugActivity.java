@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivityObdDebugBinding;
 import obdmap.launcher.obd.FuelCalculator;
+import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.service.ObdService;
@@ -25,8 +26,9 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * Pantalla de debug del bloque OBD2.
- * Muestra todos los valores de telemetría incluyendo los de consumo diésel (Fase 3).
+ * Pantalla de debug del OBD2: enseña en crudo todo lo que llega del coche
+ * (RPM, velocidad, temperaturas, consumo...) para comprobar que el adaptador
+ * y las fórmulas funcionan antes de montar la UI bonita.
  */
 public final class ObdDebugActivity extends AppCompatActivity implements ObdServiceListener {
 
@@ -77,6 +79,10 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
         if (mac != null && !mac.isEmpty()) {
             Intent intent = new Intent(this, ObdService.class);
             ContextCompat.startForegroundService(this, intent);
+        } else {
+            // Sin MAC el servicio se autodetiene sin emitir estados: si no lo
+            // decimos aquí, la etiqueta se quedaría en "Conectando…" para siempre.
+            binding.debugStateValue.setText(R.string.obd_state_no_mac);
         }
 
         Intent bindIntent = new Intent(this, ObdService.class);
@@ -139,29 +145,29 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
         }
 
         switch (pid) {
-            case "010C":
+            case ObdPids.RPM:
                 binding.debugRpmValue.setText(String.valueOf(rawValue));
                 break;
-            case "010D":
+            case ObdPids.SPEED:
                 binding.debugSpeedValue.setText(String.valueOf(rawValue));
                 break;
-            case "0104":
+            case ObdPids.LOAD:
                 binding.debugLoadValue.setText(String.valueOf(rawValue));
                 break;
-            case "0111":
+            case ObdPids.THROTTLE:
                 binding.debugThrottleValue.setText(String.valueOf(rawValue));
                 break;
-            case "0105":
+            case ObdPids.COOLANT:
                 // Puede ser negativo; valueOf lo formatea correctamente.
                 binding.debugCoolantValue.setText(String.valueOf(rawValue));
                 break;
-            case "010F":
+            case ObdPids.IAT:
                 binding.debugIatValue.setText(String.valueOf(rawValue));
                 break;
-            case "010B":
+            case ObdPids.MAP:
                 binding.debugMapValue.setText(String.valueOf(rawValue));
                 break;
-            case "015E":
+            case ObdPids.FUEL_RATE:
                 // rawValue es punto fijo; L/h real = raw / 20.
                 updateFuelRateField(rawValue);
                 break;
@@ -180,9 +186,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
     // Helpers de UI
     // =========================================================================
 
-    /**
-     * Rellena todos los campos con el estado actual del servicio justo tras el bind.
-     */
+    /** Pinta todos los campos con lo que tenga el servicio justo tras conectar. */
     private void refreshAllFields() {
         if (boundService == null || binding == null) {
             return;
@@ -225,8 +229,8 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
     }
 
     /**
-     * Actualiza el campo de caudal 015E.
-     * Si el raw es negativo (sin dato), muestra "—". Si es cero, muestra "No soportado".
+     * Campo del caudal 015E: negativo = sin dato ("—"), cero = la ECU no lo
+     * soporta, positivo = se muestra en L/h.
      */
     private void updateFuelRateField(int raw) {
         if (binding == null) {
@@ -245,10 +249,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
         }
     }
 
-    /**
-     * Actualiza los campos de consumo instantáneo, medio y método activo.
-     * Se llama en cada dato recibido y en el bind inicial.
-     */
+    /** Refresca los campos de consumo (instantáneo, medio y método activo). */
     private void updateFuelFields() {
         if (boundService == null || binding == null) {
             return;
