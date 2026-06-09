@@ -19,9 +19,20 @@
     <string name="settings_open_bt_settings">Abrir ajustes Bluetooth</string>
 
     <!-- Mensajes de estado dentro de Ajustes. -->
-    <string name="settings_bt_off">Bluetooth apagado. Actívalo para ver los dispositivos emparejados.</string>
-    <string name="settings_no_paired">No hay dispositivos emparejados. Ve a los ajustes Bluetooth del sistema para emparejar el adaptador ELM327.</string>
+    <string name="settings_bt_off">Bluetooth apagado. Actívalo para buscar el adaptador ELM327.</string>
+    <string name="settings_no_paired">No hay dispositivos emparejados. Pulsa «Buscar dispositivos» para escanear.</string>
     <string name="settings_no_bt_settings_app">No se encontró la app de Ajustes del sistema</string>
+
+    <!-- Escaneo y emparejado desde la propia app. -->
+    <string name="settings_scan_button">Buscar dispositivos</string>
+    <string name="settings_scanning">Buscando…</string>
+    <string name="settings_section_devices">Dispositivos Bluetooth</string>
+    <string name="settings_badge_paired">Emparejado</string>
+    <string name="settings_badge_unpaired">Sin emparejar</string>
+    <string name="settings_bonding">Emparejando…</string>
+    <string name="settings_bond_ok">%1$s emparejado y seleccionado como adaptador OBD2</string>
+    <string name="settings_bond_fail">No se pudo emparejar con %1$s. Comprueba el PIN del adaptador.</string>
+    <string name="settings_tap_to_pair">Toca el dispositivo para seleccionarlo o emparejarlo</string>
 
     <!-- Mensajes de estado (overlay superior izquierdo). -->
     <string name="status_initializing">Inicializando…</string>

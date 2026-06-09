@@ -9,4 +9,10 @@
     <color name="text_primary">#FFE6E6E6</color>
     <color name="text_secondary">#FFB0B0B0</color>
     <color name="emergency_button">#FFB00020</color>
+    <!-- Color de fondo para dispositivos aún no emparejados en la lista BT. -->
+    <color name="surface_unpaired">#FF252A10</color>
+    <!-- Color de la etiqueta "Sin emparejar". -->
+    <color name="text_unpaired">#FFFFCC02</color>
+    <!-- Color de la etiqueta "Emparejado". -->
+    <color name="text_paired">#FF66BB6A</color>
 </resources>

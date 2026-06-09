@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Ítem individual de la lista de dispositivos Bluetooth emparejados.
-    Muestra nombre y MAC en dos líneas. El fondo cambia vía selector
-    de estado en código (setBackgroundColor) según esté seleccionado o no.
+    Ítem individual de la lista de dispositivos Bluetooth.
+    Muestra nombre, MAC y una etiqueta "Emparejado" / "Sin emparejar".
+    El fondo cambia en código según esté seleccionado, emparejado o no.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -11,13 +11,36 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <TextView
-        android:id="@+id/deviceName"
+    <!-- Fila superior: nombre y etiqueta de estado emparejado. -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/deviceName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Etiqueta "Emparejado" (verde) o "Sin emparejar" (amarillo). -->
+        <TextView
+            android:id="@+id/deviceBondBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@color/surface_dark"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/deviceMac"

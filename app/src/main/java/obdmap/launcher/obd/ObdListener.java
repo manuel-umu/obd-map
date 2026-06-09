@@ -21,9 +21,10 @@ public interface ObdListener {
      * no crear objetos por llamada en el bucle caliente.
      *
      * @param pid      código de 4 caracteres del modo/PID (p. ej. {@code "010C"})
-     * @param rawValue valor entero calculado a partir de los bytes de la respuesta;
-     *                 la interpretación (RPM = rawValue / 4, km/h = rawValue, etc.)
-     *                 corre a cargo del Bloque C
+     * @param rawValue valor ya decodificado a unidades reales por el reader:
+     *                 010C → rpm (entero), 010D → km/h, 0104 → % de carga motor.
+     *                 Excepción: 0110 (MAF) es g/s×100 en punto fijo; se finalizará
+     *                 en Fase 3 cuando se incorpore ese indicador a la UI.
      */
     void onObdData(@NonNull String pid, int rawValue);
 

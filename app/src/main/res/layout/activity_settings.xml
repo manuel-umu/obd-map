@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Layout de la pantalla de Ajustes (Bloque A, Fase 2).
+    Layout de la pantalla de Ajustes (Bloque A, Fase 2.1).
     Estructura lineal vertical:
         1. Barra de título con botón atrás.
         2. Chip de selección actual.
         3. Subtítulo de sección.
-        4. ListView con los dispositivos emparejados (sin RecyclerView para
-           no introducir dependencia nueva: AppCompat 1.2.0 ya incluye ListView).
-        5. Botones de acción (borrar selección, abrir ajustes BT).
-        6. Mensaje de estado cuando BT está apagado o no hay emparejados.
+        4. ListView con todos los dispositivos (emparejados + encontrados).
+        5. Mensaje de estado cuando BT apagado o lista vacía (comparte espacio con la lista).
+        6. Botones de acción SIEMPRE visibles: Buscar, Abrir ajustes BT, Borrar selección.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -67,7 +66,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="4dp"
-        android:text="@string/settings_section_paired"
+        android:text="@string/settings_section_devices"
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />
 
@@ -86,7 +85,7 @@
         android:dividerHeight="1dp"
         android:scrollbars="vertical" />
 
-    <!-- Mensaje de estado cuando BT apagado o sin emparejados. Oculto por defecto. -->
+    <!-- Mensaje de estado cuando BT apagado o lista vacía. Oculto por defecto. -->
     <TextView
         android:id="@+id/statusMessage"
         android:layout_width="match_parent"
@@ -99,27 +98,52 @@
         android:textSize="15sp"
         android:visibility="gone" />
 
-    <!-- Botón para abrir ajustes BT del sistema (visible cuando BT apagado o sin emparejados). -->
-    <Button
-        android:id="@+id/openBtSettingsButton"
+    <!--
+        Zona de botones de acción — SIEMPRE visible.
+        Fila superior: Buscar dispositivos + Abrir ajustes BT.
+        Fila inferior: Borrar selección.
+    -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:background="@color/primary"
-        android:minHeight="52dp"
-        android:text="@string/settings_open_bt_settings"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp">
+
+        <!-- Botón de escaneo activo BT. -->
+        <Button
+            android:id="@+id/scanButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@color/primary"
+            android:minHeight="52dp"
+            android:text="@string/settings_scan_button"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <!-- Botón para abrir ajustes BT del sistema. -->
+        <Button
+            android:id="@+id/openBtSettingsButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/surface_dark"
+            android:minHeight="52dp"
+            android:text="@string/settings_open_bt_settings"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <!-- Botón para limpiar la selección actual. -->
     <Button
         android:id="@+id/clearSelectionButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
+        android:layout_margin="16dp"
         android:background="@color/surface_dark"
         android:minHeight="52dp"
         android:text="@string/settings_clear_button"

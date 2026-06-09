@@ -547,8 +547,8 @@ public final class BluetoothObdReader {
 
         // Comparamos el PID en mayúsculas (ya viene así del caller).
         if ("010C".equals(pid)) {
-            // RPM = (A*256 + B) / 4. Devolvemos A*256+B; el Bloque C divide entre 4.
-            return (a << 8) | b;
+            // RPM real = (A*256 + B) / 4. Resolución 0,25 rpm redondeada a entero.
+            return ((a << 8) | b) / 4;
         } else if ("010D".equals(pid)) {
             // Velocidad en km/h, directa.
             return a;
@@ -556,7 +556,10 @@ public final class BluetoothObdReader {
             // Carga del motor en porcentaje: (A * 100) / 255.
             return (a * 100) / 255;
         } else if ("0110".equals(pid)) {
-            // MAF en g/s * 100: (A*256 + B). Bloque C divide entre 100.
+            // MAF en formato punto fijo g/s×100: valor = (A*256 + B).
+            // Excepción conocida: NO se divide aquí porque en ralentí (~2-4 g/s) la
+            // división entera entre 100 perdería toda la precisión. Se decodificará
+            // a g/s reales en Fase 3, cuando se muestre el dato en la UI.
             return (a << 8) | b;
         } else {
             // PID genérico: devolvemos los primeros dos bytes de datos combinados.

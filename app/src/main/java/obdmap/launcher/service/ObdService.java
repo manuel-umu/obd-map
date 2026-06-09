@@ -197,7 +197,7 @@ public final class ObdService extends Service implements ObdListener {
         return currentState;
     }
 
-    /** Valor bruto del PID 010C (RPM = rawValue / 4). -1 si sin dato. */
+    /** RPM real del motor (PID 010C, ya decodificado). -1 si sin dato. */
     public int getLastRpm() {
         return lastRpm;
     }

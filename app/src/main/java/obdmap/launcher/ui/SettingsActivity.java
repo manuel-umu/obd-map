@@ -3,7 +3,10 @@ package obdmap.launcher.ui;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
@@ -21,29 +24,32 @@ import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivitySettingsBinding;
 import obdmap.launcher.prefs.PrefsManager;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Set;
 
 /**
- * Pantalla de ajustes del Bloque A (Fase 2). Permite al usuario seleccionar
- * el adaptador ELM327 de entre los dispositivos Bluetooth ya emparejados
- * en el sistema y persistir su MAC en {@link PrefsManager}.
- *
- * <p>No se usa un Intent de escaneo activo ni se fuerza el encendido del BT
- * programáticamente: solo se lista lo que el sistema ya tiene emparejado.</p>
+ * Pantalla de ajustes del Bloque A (Fase 2.1, ampliada).
+ * Lista dispositivos BT emparejados Y los encontrados durante el escaneo activo.
+ * Permite emparejar el ELM327 directamente desde la app (createBond + PIN 1234
+ * automático), sin depender de la UI de Bluetooth del sistema de la radio.
  */
 public final class SettingsActivity extends AppCompatActivity {
 
     private ActivitySettingsBinding binding;
     private PrefsManager prefsManager;
 
-    // Lista mutable que alimenta el adaptador; se rellena en onResume
-    // para reflejar cambios si el usuario volvió de ajustes BT.
-    private final ArrayList<BluetoothDevice> pairedDevices = new ArrayList<>();
-    private PairedDevicesAdapter listAdapter;
+    // Todos los dispositivos mostrados: emparejados + encontrados en el escaneo.
+    private final ArrayList<BluetoothDevice> allDevices = new ArrayList<>();
+    private DevicesAdapter listAdapter;
 
-    // MAC guardada actualmente (puede ser null si no hay ninguna).
     @Nullable private String currentMac;
+    private boolean scanning = false;
+    private boolean receiversRegistered = false;
+
+    // =========================================================================
+    // Ciclo de vida
+    // =========================================================================
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -52,8 +58,7 @@ public final class SettingsActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         prefsManager = new PrefsManager(this);
-
-        listAdapter = new PairedDevicesAdapter();
+        listAdapter = new DevicesAdapter();
         binding.pairedDevicesList.setAdapter(listAdapter);
 
         binding.backButton.setOnClickListener(new View.OnClickListener() {
@@ -69,7 +74,6 @@ public final class SettingsActivity extends AppCompatActivity {
                 prefsManager.clearObdMac();
                 currentMac = null;
                 refreshSelectedLabel();
-                // Forzamos redibujado de la lista para quitar el resaltado.
                 listAdapter.notifyDataSetChanged();
             }
         });
@@ -80,8 +84,6 @@ public final class SettingsActivity extends AppCompatActivity {
                 try {
                     startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
                 } catch (ActivityNotFoundException e) {
-                    // Muchas radios chinas eliminan la pantalla de ajustes BT;
-                    // intentamos los ajustes generales como último recurso.
                     try {
                         startActivity(new Intent(Settings.ACTION_SETTINGS));
                     } catch (ActivityNotFoundException e2) {
@@ -93,15 +95,22 @@ public final class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        binding.scanButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startScan();
+            }
+        });
+
         binding.pairedDevicesList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                BluetoothDevice device = pairedDevices.get(position);
-                String mac = device.getAddress();
-                prefsManager.setObdMac(mac);
-                currentMac = mac;
-                refreshSelectedLabel();
-                listAdapter.notifyDataSetChanged();
+                BluetoothDevice device = allDevices.get(position);
+                if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    selectDevice(device);
+                } else {
+                    pairDevice(device);
+                }
             }
         });
     }
@@ -109,10 +118,17 @@ public final class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Releemos la MAC guardada por si cambió mientras estaba en otra pantalla.
         currentMac = prefsManager.getObdMac();
         refreshSelectedLabel();
-        refreshPairedDevicesList();
+        refreshDeviceList();
+        registerReceivers();
+    }
+
+    @Override
+    protected void onPause() {
+        stopScan();
+        unregisterReceivers();
+        super.onPause();
     }
 
     @Override
@@ -121,77 +137,228 @@ public final class SettingsActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    // ------------------------------------------------------------------------
-    // Lógica interna
-    // ------------------------------------------------------------------------
+    // =========================================================================
+    // Escaneo y emparejado
+    // =========================================================================
 
-    /**
-     * Actualiza el chip de selección actual con la MAC guardada, o muestra
-     * "Ninguno seleccionado" si no hay ninguna.
-     */
+    private void startScan() {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null || !adapter.isEnabled()) {
+            showMessage(getString(R.string.settings_bt_off));
+            return;
+        }
+        if (scanning) {
+            return;
+        }
+        if (adapter.isDiscovering()) {
+            adapter.cancelDiscovery();
+        }
+        scanning = true;
+        binding.scanButton.setText(R.string.settings_scanning);
+        binding.scanButton.setEnabled(false);
+        adapter.startDiscovery();
+    }
+
+    private void stopScan() {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter != null && adapter.isDiscovering()) {
+            adapter.cancelDiscovery();
+        }
+        scanning = false;
+        if (binding != null) {
+            binding.scanButton.setText(R.string.settings_scan_button);
+            binding.scanButton.setEnabled(true);
+        }
+    }
+
+    private void pairDevice(@NonNull BluetoothDevice device) {
+        // Cancelar discovery antes de emparejar: el discovery activo bloquea el bonding.
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter != null && adapter.isDiscovering()) {
+            adapter.cancelDiscovery();
+        }
+        scanning = false;
+        if (binding != null) {
+            binding.scanButton.setText(R.string.settings_scan_button);
+            binding.scanButton.setEnabled(true);
+        }
+        device.createBond();
+        Toast.makeText(this, R.string.settings_bonding, Toast.LENGTH_SHORT).show();
+    }
+
+    private void selectDevice(@NonNull BluetoothDevice device) {
+        String mac = device.getAddress();
+        prefsManager.setObdMac(mac);
+        currentMac = mac;
+        refreshSelectedLabel();
+        listAdapter.notifyDataSetChanged();
+    }
+
+    // =========================================================================
+    // BroadcastReceivers
+    // =========================================================================
+
+    private final BroadcastReceiver scanReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device != null) {
+                    addOrUpdateDevice(device);
+                }
+            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+                scanning = false;
+                if (binding != null) {
+                    binding.scanButton.setText(R.string.settings_scan_button);
+                    binding.scanButton.setEnabled(true);
+                }
+            }
+        }
+    };
+
+    // Prioridad alta para suprimir el diálogo del sistema (broadcast ordenado).
+    private final BroadcastReceiver pairingReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!BluetoothDevice.ACTION_PAIRING_REQUEST.equals(intent.getAction())) {
+                return;
+            }
+            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            int variant = intent.getIntExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, -1);
+            if (device != null && variant == BluetoothDevice.PAIRING_VARIANT_PIN) {
+                device.setPin("1234".getBytes(StandardCharsets.US_ASCII));
+                try {
+                    abortBroadcast();
+                } catch (Exception ignored) {
+                    // Best-effort: si no suprime el diálogo, el usuario verá
+                    // el cuadro del sistema con el PIN ya pre-rellenado.
+                }
+            }
+        }
+    };
+
+    private final BroadcastReceiver bondReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction())) {
+                return;
+            }
+            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            int newState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+            if (device == null) {
+                return;
+            }
+            addOrUpdateDevice(device);
+
+            String name = device.getName() != null ? device.getName() : device.getAddress();
+            if (newState == BluetoothDevice.BOND_BONDED) {
+                selectDevice(device);
+                Toast.makeText(context,
+                        getString(R.string.settings_bond_ok, name),
+                        Toast.LENGTH_LONG).show();
+            } else if (newState == BluetoothDevice.BOND_NONE) {
+                Toast.makeText(context,
+                        getString(R.string.settings_bond_fail, name),
+                        Toast.LENGTH_LONG).show();
+            }
+        }
+    };
+
+    private void registerReceivers() {
+        if (receiversRegistered) {
+            return;
+        }
+        IntentFilter scanFilter = new IntentFilter();
+        scanFilter.addAction(BluetoothDevice.ACTION_FOUND);
+        scanFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        registerReceiver(scanReceiver, scanFilter);
+
+        IntentFilter pairFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
+        pairFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
+        registerReceiver(pairingReceiver, pairFilter);
+
+        registerReceiver(bondReceiver,
+                new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
+
+        receiversRegistered = true;
+    }
+
+    private void unregisterReceivers() {
+        if (!receiversRegistered) {
+            return;
+        }
+        try { unregisterReceiver(scanReceiver); } catch (IllegalArgumentException ignored) {}
+        try { unregisterReceiver(pairingReceiver); } catch (IllegalArgumentException ignored) {}
+        try { unregisterReceiver(bondReceiver); } catch (IllegalArgumentException ignored) {}
+        receiversRegistered = false;
+    }
+
+    // =========================================================================
+    // Helpers de lista y UI
+    // =========================================================================
+
+    private void refreshDeviceList() {
+        allDevices.clear();
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null || !adapter.isEnabled()) {
+            showMessage(getString(R.string.settings_bt_off));
+            listAdapter.notifyDataSetChanged();
+            return;
+        }
+        Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+        if (bonded != null) {
+            allDevices.addAll(bonded);
+        }
+        if (allDevices.isEmpty()) {
+            showMessage(getString(R.string.settings_no_paired));
+        } else {
+            showMessage(null);
+        }
+        listAdapter.notifyDataSetChanged();
+    }
+
+    private void addOrUpdateDevice(@NonNull BluetoothDevice device) {
+        String mac = device.getAddress();
+        for (int i = 0; i < allDevices.size(); i++) {
+            if (mac.equals(allDevices.get(i).getAddress())) {
+                allDevices.set(i, device);
+                if (binding != null) {
+                    showMessage(null);
+                    listAdapter.notifyDataSetChanged();
+                }
+                return;
+            }
+        }
+        allDevices.add(device);
+        if (binding != null) {
+            showMessage(null);
+            listAdapter.notifyDataSetChanged();
+        }
+    }
+
     private void refreshSelectedLabel() {
         if (currentMac == null || currentMac.isEmpty()) {
             binding.selectedDeviceText.setText(R.string.settings_none_selected);
         } else {
-            // Buscamos el nombre del dispositivo para mostrarlo junto a la MAC.
             String label = findDeviceName(currentMac);
             binding.selectedDeviceText.setText(
                     getString(R.string.settings_selected_label, label + "  " + currentMac));
         }
     }
 
-    /**
-     * Recorre la lista en memoria para encontrar el nombre asociado a una MAC.
-     * Devuelve la MAC como fallback si el dispositivo ya no está emparejado.
-     */
     private String findDeviceName(@NonNull String mac) {
-        for (int i = 0; i < pairedDevices.size(); i++) {
-            if (mac.equals(pairedDevices.get(i).getAddress())) {
-                return pairedDevices.get(i).getName();
+        for (int i = 0; i < allDevices.size(); i++) {
+            BluetoothDevice d = allDevices.get(i);
+            if (mac.equals(d.getAddress())) {
+                String name = d.getName();
+                return name != null ? name : mac;
             }
         }
         return mac;
     }
 
-    /**
-     * Consulta los dispositivos emparejados del sistema y actualiza la UI
-     * según si el BT está encendido, no hay emparejados, o hay lista normal.
-     */
-    private void refreshPairedDevicesList() {
-        pairedDevices.clear();
-
-        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        if (btAdapter == null || !btAdapter.isEnabled()) {
-            // BT apagado o no disponible en este hardware.
-            showMessage(getString(R.string.settings_bt_off), true);
-            listAdapter.notifyDataSetChanged();
-            return;
-        }
-
-        Set<BluetoothDevice> bonded = btAdapter.getBondedDevices();
-        if (bonded == null || bonded.isEmpty()) {
-            showMessage(getString(R.string.settings_no_paired), true);
-            listAdapter.notifyDataSetChanged();
-            return;
-        }
-
-        // Hay dispositivos emparejados: llenar la lista y ocultar el mensaje.
-        for (BluetoothDevice device : bonded) {
-            pairedDevices.add(device);
-        }
-        showMessage(null, false);
-        listAdapter.notifyDataSetChanged();
-    }
-
-    /**
-     * Alterna entre el mensaje de estado y la lista según si hay contenido
-     * que mostrar o no.
-     *
-     * @param message  Texto del mensaje de estado, o {@code null} para ocultarlo.
-     * @param showBtButton {@code true} para mostrar el botón de ajustes BT.
-     */
-    private void showMessage(@Nullable String message, boolean showBtButton) {
+    private void showMessage(@Nullable String message) {
         if (message != null) {
             binding.statusMessage.setText(message);
             binding.statusMessage.setVisibility(View.VISIBLE);
@@ -200,27 +367,22 @@ public final class SettingsActivity extends AppCompatActivity {
             binding.statusMessage.setVisibility(View.GONE);
             binding.pairedDevicesList.setVisibility(View.VISIBLE);
         }
-        binding.openBtSettingsButton.setVisibility(showBtButton ? View.VISIBLE : View.GONE);
     }
 
-    // ------------------------------------------------------------------------
+    // =========================================================================
     // Adaptador de la lista
-    // ------------------------------------------------------------------------
+    // =========================================================================
 
-    /**
-     * Adaptador ligero para {@link android.widget.ListView}. Reutiliza vistas
-     * correctamente para evitar inflados innecesarios durante el scroll.
-     */
-    private final class PairedDevicesAdapter extends BaseAdapter {
+    private final class DevicesAdapter extends BaseAdapter {
 
         @Override
         public int getCount() {
-            return pairedDevices.size();
+            return allDevices.size();
         }
 
         @Override
         public BluetoothDevice getItem(int position) {
-            return pairedDevices.get(position);
+            return allDevices.get(position);
         }
 
         @Override
@@ -240,29 +402,45 @@ public final class SettingsActivity extends AppCompatActivity {
                 holder = (ViewHolder) convertView.getTag();
             }
 
-            BluetoothDevice device = pairedDevices.get(position);
-            holder.nameView.setText(device.getName());
+            BluetoothDevice device = allDevices.get(position);
+            String name = device.getName();
+            holder.nameView.setText(name != null ? name : device.getAddress());
             holder.macView.setText(device.getAddress());
 
-            // Resaltado visual del dispositivo actualmente seleccionado.
+            boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
             boolean selected = device.getAddress().equals(currentMac);
-            int bgColor = selected
-                    ? getResources().getColor(R.color.primary_dark)
-                    : getResources().getColor(R.color.surface_dark);
+
+            int bgColor;
+            if (selected) {
+                bgColor = getResources().getColor(R.color.primary_dark);
+            } else if (bonded) {
+                bgColor = getResources().getColor(R.color.surface_dark);
+            } else {
+                bgColor = getResources().getColor(R.color.surface_unpaired);
+            }
             convertView.setBackgroundColor(bgColor);
+
+            if (bonded) {
+                holder.bondBadge.setText(R.string.settings_badge_paired);
+                holder.bondBadge.setTextColor(getResources().getColor(R.color.text_paired));
+            } else {
+                holder.bondBadge.setText(R.string.settings_badge_unpaired);
+                holder.bondBadge.setTextColor(getResources().getColor(R.color.text_unpaired));
+            }
 
             return convertView;
         }
     }
 
-    /** ViewHolder estático para que el compilador no genere referencias ocultas a la Activity. */
     private static final class ViewHolder {
         final TextView nameView;
         final TextView macView;
+        final TextView bondBadge;
 
         ViewHolder(@NonNull View itemView) {
-            nameView = itemView.findViewById(R.id.deviceName);
-            macView  = itemView.findViewById(R.id.deviceMac);
+            nameView  = itemView.findViewById(R.id.deviceName);
+            macView   = itemView.findViewById(R.id.deviceMac);
+            bondBadge = itemView.findViewById(R.id.deviceBondBadge);
         }
     }
 }
