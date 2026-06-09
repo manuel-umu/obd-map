@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.obdmap.launcher">
+    package="obdmap.launcher">
 
     <!-- Comunicación con el ELM327 vía Bluetooth clásico (SPP). -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -60,6 +60,23 @@
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
+
+        <!-- Pantalla de debug OBD2 en bruto (Bloque C, Fase 2). -->
+        <activity
+            android:name=".ui.ObdDebugActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!--
+            Foreground Service del OBD2 (Bloque C, Fase 2).
+            FOREGROUND_SERVICE es obligatorio en targetSdk 28 (introducido en API 28).
+            foregroundServiceType se omite: el atributo y el valor "connectedDevice"
+            son API 29+; con targetSdk/compileSdk 28 el servicio funciona sin él.
+            exported=false: solo se arranca desde dentro de la app.
+        -->
+        <service
+            android:name=".service.ObdService"
+            android:exported="false" />
 
     </application>
 

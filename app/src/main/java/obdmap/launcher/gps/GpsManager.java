@@ -1,4 +1,4 @@
-package com.obdmap.launcher.gps;
+package obdmap.launcher.gps;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

@@ -1,4 +1,4 @@
-package com.obdmap.launcher.obd;
+package obdmap.launcher.obd;
 
 import androidx.annotation.IntDef;
 

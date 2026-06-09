@@ -30,4 +30,34 @@
     <string name="status_map_loaded">Mapa: %1$s · esperando GPS…</string>
     <string name="status_gps_active">GPS activo</string>
     <string name="status_gps_lost">GPS perdido</string>
+
+    <!-- Botón de acceso a la pantalla de debug OBD2 (Bloque C). -->
+    <string name="open_obd_debug_button">Debug OBD</string>
+
+    <!-- Estados del ObdService — usados en la notificación y en la pantalla de debug. -->
+    <string name="obd_state_connecting">Conectando…</string>
+    <string name="obd_state_initializing">Inicializando…</string>
+    <string name="obd_state_connected">Conectado</string>
+    <string name="obd_state_reconnecting">Reconectando…</string>
+    <!-- Versión corta para la notificación cuando no hay descripción de error. -->
+    <string name="obd_state_failed_short">Fallo de conexión</string>
+    <!-- Versión larga con descripción; %1$s = mensaje de error del reader. -->
+    <string name="obd_state_failed">Fallo: %1$s</string>
+    <!-- Texto de la notificación cuando no hay MAC configurada. -->
+    <string name="obd_notif_no_mac">Sin adaptador configurado</string>
+
+    <!-- Pantalla de debug OBD2 (Bloque C, ítem 2.7). -->
+    <string name="debug_title">Debug OBD2</string>
+    <string name="debug_back_button">Atrás</string>
+    <string name="debug_rpm_label">RPM:</string>
+    <string name="debug_speed_label">Velocidad:</string>
+    <string name="debug_speed_unit">km/h</string>
+    <string name="debug_load_label">Carga motor:</string>
+    <string name="debug_load_unit">%</string>
+    <string name="debug_state_label">Estado:</string>
+    <!-- %1$s = hora en formato HH:mm:ss -->
+    <string name="debug_last_reading">Última lectura: %1$s</string>
+    <string name="debug_no_reading_yet">Sin lecturas aún</string>
+    <!-- Valor mostrado cuando el dato no ha llegado todavía. -->
+    <string name="debug_no_data">—</string>
 </resources>

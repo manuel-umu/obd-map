@@ -55,9 +55,20 @@
 # BluetoothObdReader usa BluetoothSocket y streams estándar de Java: no hay
 # reflection interna, así que no necesita -keep. Solo conservamos los nombres
 # de las clases públicas para que los stack traces sean legibles.
--keep class com.obdmap.launcher.obd.ObdState { *; }
--keep class com.obdmap.launcher.obd.ObdListener { *; }
--keep class com.obdmap.launcher.obd.BluetoothObdReader { *; }
+-keep class obdmap.launcher.obd.ObdState { *; }
+-keep class obdmap.launcher.obd.ObdListener { *; }
+-keep class obdmap.launcher.obd.BluetoothObdReader { *; }
+
+# -----------------------------------------------------------------------------
+# Paquete service (Bloque C, Fase 2)
+# -----------------------------------------------------------------------------
+# ObdService es referenciado desde el Manifest por nombre de clase; sin este
+# -keep R8 puede renombrarlo y el sistema no lo encontraría al arrancar.
+-keep class obdmap.launcher.service.ObdService { *; }
+-keep interface obdmap.launcher.service.ObdServiceListener { *; }
+
+# ObdDebugActivity también referenciada desde el Manifest.
+-keep class obdmap.launcher.ui.ObdDebugActivity { *; }
 
 # -----------------------------------------------------------------------------
 # Reglas de GraphHopper      — Se añadirán en la Fase 4.

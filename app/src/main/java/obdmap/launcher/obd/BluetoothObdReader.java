@@ -1,4 +1,4 @@
-package com.obdmap.launcher.obd;
+package obdmap.launcher.obd;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -8,7 +8,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.obdmap.launcher.BuildConfig;
+import obdmap.launcher.BuildConfig;
 
 import java.io.IOException;
 import java.io.InputStream;

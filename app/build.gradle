@@ -6,7 +6,7 @@ android {
     // mínima compatible (30.0.3 para AGP 7.4.2).
 
     defaultConfig {
-        applicationId "com.obdmap.launcher"
+        applicationId "obdmap.launcher"
         minSdkVersion 24       // Android 7.0 — radios chinas modernas
         targetSdkVersion 28    // Evita permisos runtime de API 29+ y bloat AndroidX nuevo
         versionCode 1

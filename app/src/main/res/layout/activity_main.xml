@@ -58,19 +58,37 @@
         android:textColor="@color/text_primary"
         android:textSize="16sp" />
 
-    <!-- Botón de acceso a Ajustes de la app (Bloque A). Tamaño reducido
-         para no estorbar al mapa: esquina inferior, entre Recentrar y el de emergencia. -->
+    <!-- Botón de acceso a Ajustes de la app (Bloque A). Desplazado a la
+         izquierda del centro para dejar hueco al botón Debug OBD. -->
     <Button
         android:id="@+id/openSettingsButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_margin="16dp"
+        android:layout_marginEnd="100dp"
         android:background="@color/surface_dark"
         android:minHeight="48dp"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
         android:text="@string/open_app_settings_button"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <!-- Botón de acceso a la pantalla de debug OBD2 (Bloque C). Junto al de
+         Ajustes, en la franja inferior central. No estorba el mapa. -->
+    <Button
+        android:id="@+id/openObdDebugButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_margin="16dp"
+        android:layout_marginStart="100dp"
+        android:background="@color/surface_dark"
+        android:minHeight="48dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:text="@string/open_obd_debug_button"
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />
 

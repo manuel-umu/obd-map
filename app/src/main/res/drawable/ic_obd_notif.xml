@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Icono de la notificación persistente del ObdService.
+    Círculo sólido blanco: color ignorado en la barra de estado (Android usa
+    solo el canal alfa), pero tintado en blanco para el contenido de la notificación.
+    Tamaño 24dp estándar para iconos de notificación.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- Círculo exterior — cuerpo del velocímetro/OBD -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2 A10,10 0 1,0 12,22 A10,10 0 1,0 12,2 Z" />
+
+    <!-- Círculo interior recortado en negro para dar efecto de anillo -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,6 A6,6 0 1,0 12,18 A6,6 0 1,0 12,6 Z" />
+
+    <!-- Punto central blanco: indicador del ELM327 activo -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,10 A2,2 0 1,0 12,14 A2,2 0 1,0 12,10 Z" />
+
+</vector>

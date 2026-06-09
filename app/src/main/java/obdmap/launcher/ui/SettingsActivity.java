@@ -1,4 +1,4 @@
-package com.obdmap.launcher.ui;
+package obdmap.launcher.ui;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -17,9 +17,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.obdmap.launcher.R;
-import com.obdmap.launcher.databinding.ActivitySettingsBinding;
-import com.obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.R;
+import obdmap.launcher.databinding.ActivitySettingsBinding;
+import obdmap.launcher.prefs.PrefsManager;
 
 import java.util.ArrayList;
 import java.util.Set;

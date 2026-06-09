@@ -1,4 +1,4 @@
-package com.obdmap.launcher.map;
+package obdmap.launcher.map;
 
 import android.os.Environment;
 

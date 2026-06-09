@@ -1,4 +1,4 @@
-package com.obdmap.launcher.prefs;
+package obdmap.launcher.prefs;
 
 import android.content.Context;
 import android.content.SharedPreferences;

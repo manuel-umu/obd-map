@@ -1,4 +1,4 @@
-package com.obdmap.launcher.ui;
+package obdmap.launcher.ui;
 
 import android.Manifest;
 import android.content.Intent;
@@ -14,13 +14,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.obdmap.launcher.R;
-import com.obdmap.launcher.databinding.ActivityMainBinding;
-import com.obdmap.launcher.gps.GpsManager;
-import com.obdmap.launcher.map.MapFileLocator;
-import com.obdmap.launcher.map.MapManager;
-import com.obdmap.launcher.map.PositionLayer;
-import com.obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.service.ObdService;
+
+import obdmap.launcher.R;
+import obdmap.launcher.databinding.ActivityMainBinding;
+import obdmap.launcher.gps.GpsManager;
+import obdmap.launcher.map.MapFileLocator;
+import obdmap.launcher.map.MapManager;
+import obdmap.launcher.map.PositionLayer;
+import obdmap.launcher.prefs.PrefsManager;
 
 import org.mapsforge.core.model.LatLong;
 
@@ -78,6 +80,13 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
             }
         });
 
+        binding.openObdDebugButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, ObdDebugActivity.class));
+            }
+        });
+
         binding.recenterButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -108,6 +117,8 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_PERMISSIONS);
         }
+
+        maybeStartObdService();
     }
 
     @Override
@@ -211,6 +222,9 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
                 // Permisos revocados desde Ajustes: silencioso.
             }
         }
+
+        // Si el usuario acaba de guardar una MAC en Ajustes, arrancamos el servicio.
+        maybeStartObdService();
     }
 
     @Override
@@ -237,6 +251,19 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     }
 
     // ------------------------------------------------------------------------
+
+    /**
+     * Arranca el ObdService si hay una MAC configurada y el servicio no está ya corriendo.
+     * startForegroundService es idempotente en cuanto a duplicados: si el servicio ya
+     * existe, Android llama onStartCommand de nuevo sin crear una segunda instancia.
+     */
+    private void maybeStartObdService() {
+        String mac = prefsManager.getObdMac();
+        if (mac != null && !mac.isEmpty()) {
+            Intent intent = new Intent(this, ObdService.class);
+            ContextCompat.startForegroundService(this, intent);
+        }
+    }
 
     private void openSystemSettings() {
         Intent intent = new Intent(Settings.ACTION_SETTINGS);
