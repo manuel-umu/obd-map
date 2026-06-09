@@ -39,3 +39,25 @@ fichero afectado, la **Importancia** (ALTO / MEDIO / BAJO) y la **Dificultad**
 | B4 | **Un timeout de un comando AT = reconexión completa.** Un único reintento en `ATZ` (el más frágil) aceleraría el primer connect. | 2.4 | `obd/BluetoothObdReader.java` (`performHandshake`) | FÁCIL |
 | B5 | **`onObdDataUpdated` no guarda `binding == null`** mientras `updateStateLabel` sí lo hace. No hay NPE real (todo en main thread, listener ya null entre `onStop` y `onDestroy`), pero es una inconsistencia frágil. Añadir el guard por simetría. | 2.7 | `ui/ObdDebugActivity.java` | FÁCIL |
 | B6 | **MAF (`0110`) se sondea pero no se muestra** (reservado para Fase 3). De momento es un sondeo desperdiciado; decidir si dejarlo (prepara Fase 3) o quitarlo hasta entonces. | 2.6 / 2.7 | `service/ObdService.java`, `ui/ObdDebugActivity.java` | FÁCIL |
+
+---
+
+## Fase 3
+
+> TODOs y mejoras detectados al implementar el bloque de datos (3.1–3.3).
+
+### 🟡 MEDIO
+
+| # | Mejora | Paso | Fichero | Dificultad |
+|---|--------|------|---------|------------|
+| M1 | **Fallback speed-density (MAP+IAT+RPM) sin implementar.** Es el tercer método de cálculo de consumo cuando no hay ni `015E` ni MAF. Ahora mismo `getInstantLh` devuelve `NO_DATA` en ese caso (queda como TODO en `METHOD_SPEED_DENSITY`). Requiere estimar el flujo de aire por densidad-velocidad (ley de gases + eficiencia volumétrica). | 3.2 | `obd/FuelCalculator.java` | DIFÍCIL |
+| M2 | **`015E` ignora valores ≤ 0 → sobreestima en deceleración.** `onFuelRateUpdated` descarta `rawFuelRate <= 0`. Pero en diésel el **corte de inyección al decelerar** (0 L/h) es un estado real y frecuente; al ignorarlo, se mantiene el último valor no nulo y el consumo sale inflado en esos tramos. Una vez detectado el soporte (`fuelRateSupported = true`), aceptar el 0 como consumo real; usar el `<= 0` solo para la detección inicial. | 3.2 | `obd/FuelCalculator.java` (`onFuelRateUpdated`) | FÁCIL |
+| M3 | **`015E` se sigue sondeando aunque la ECU no lo soporte.** Si el coche no tiene fuel rate, se encola igualmente cada ciclo → malgasta 1 de los 5 slots rápidos para siempre y ralentiza el resto de la telemetría. Tras detectar que no responde (varios `NO DATA`), dejar de encolarlo. | 3.1 | `service/ObdService.java` (`pollRunnable`) + `FuelCalculator` | MEDIO |
+| M4 | **Precisión del consumo MAF en diésel.** El método MAF usa AFR estequiométrico fijo (14.5), pero el diésel va en mezcla pobre variable → **sobreestima a carga parcial**. Mejora: modelo con lambda variable (PID `0134`/`0124`) o estimación por carga. Solo relevante si el coche **no** tiene `015E`. | 3.2 | `obd/FuelCalculator.java` (`calcLhFromMaf`) | DIFÍCIL |
+
+### 🟢 BAJO
+
+| # | Mejora | Paso | Fichero | Dificultad |
+|---|--------|------|---------|------------|
+| B1 | **Visibilidad cross-thread de los datos de consumo.** Los campos del `FuelCalculator` (`lastMafGs`, `lastFuelRateLh`, `lastSpeedKmh`, `activeMethod`) y los arrays del ring buffer se escriben en el hilo de polling y se leen desde el main thread (getters) sin `volatile` ni sincronización. En la pantalla de debug el peor caso es un valor momentáneamente desactualizado; al pasar al HUD (3.4–3.6) conviene un snapshot atómico o sincronización ligera. | 3.2 / 3.3 | `obd/FuelCalculator.java`, `service/ObdService.java` | MEDIO |
+| B2 | **`getAverageL100km` recorre hasta 1600 entradas en el main thread por refresco.** Negligible ahora, pero si el HUD refresca a 5–10 Hz conviene cachear el resultado y recomputar solo al insertar muestra (o mantener acumuladores incrementales en vez de recorrer el buffer entero). | 3.3 | `obd/FuelCalculator.java` (`getAverageL100km`) | FÁCIL |

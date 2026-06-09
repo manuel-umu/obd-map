@@ -20,6 +20,7 @@ import androidx.core.app.NotificationCompat;
 import obdmap.launcher.BuildConfig;
 import obdmap.launcher.R;
 import obdmap.launcher.obd.BluetoothObdReader;
+import obdmap.launcher.obd.FuelCalculator;
 import obdmap.launcher.obd.ObdListener;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
@@ -45,18 +46,33 @@ public final class ObdService extends Service implements ObdListener {
     private static final int NOTIF_ID = 1001;
 
     // -------------------------------------------------------------------------
-    // PIDs que se encolan en cada ronda
+    // PIDs rápidos (cada ciclo) y lentos (cada SLOW_CYCLE_COUNT ciclos)
     // -------------------------------------------------------------------------
-    private static final String PID_RPM    = "010C";
-    private static final String PID_SPEED  = "010D";
-    private static final String PID_LOAD   = "0104";
-    private static final String PID_MAF    = "0110";
+
+    // --- PIDs rápidos: se encolan en cada ciclo de POLL_INTERVAL_MS ---
+    private static final String PID_RPM        = "010C";
+    private static final String PID_SPEED      = "010D";
+    private static final String PID_MAF        = "0110";
+    private static final String PID_FUEL_RATE  = "015E";
+    private static final String PID_THROTTLE   = "0111";
+
+    // --- PIDs lentos: se encolan cada SLOW_CYCLE_COUNT ciclos ---
+    private static final String PID_LOAD       = "0104";
+    private static final String PID_COOLANT    = "0105";
+    private static final String PID_IAT        = "010F";
+    private static final String PID_MAP        = "010B";
 
     /**
      * Periodo de polling en milisegundos: 200 ms = 5 Hz.
      * Dentro del rango 5-10 Hz definido en el CLAUDE.md.
      */
     private static final long POLL_INTERVAL_MS = 200L;
+
+    /**
+     * Número de ciclos rápidos entre cada ronda de PIDs lentos.
+     * 25 ciclos × 200 ms = 5 s por muestra de los PIDs lentos.
+     */
+    private static final int SLOW_CYCLE_COUNT = 25;
 
     // -------------------------------------------------------------------------
     // Estado interno
@@ -68,12 +84,24 @@ public final class ObdService extends Service implements ObdListener {
     private volatile int currentState = ObdState.DISCONNECTED;
 
     /** Últimos valores brutos recibidos para cada PID. -1 = sin dato aún. */
-    private volatile int lastRpm   = -1;
-    private volatile int lastSpeed = -1;
-    private volatile int lastLoad  = -1;
+    private volatile int lastRpm      = -1;
+    private volatile int lastSpeed    = -1;
+    private volatile int lastLoad     = -1;
+    private volatile int lastThrottle = -1;
+    private volatile int lastCoolant  = Integer.MIN_VALUE; // puede ser negativo
+    private volatile int lastIat      = Integer.MIN_VALUE; // puede ser negativo
+    private volatile int lastMapKpa   = -1;
+    // lastFuelRateRaw: -1 = sin dato; 0 = ECU respondió pero con valor cero.
+    private volatile int lastFuelRateRaw = -1;
 
     /** Timestamp (System.currentTimeMillis) de la última lectura de cualquier PID. */
     private volatile long lastReadingTimestampMs = 0L;
+
+    /** Calculadora de consumo; instanciada una vez, sin dependencias externas. */
+    private final FuelCalculator fuelCalculator = new FuelCalculator();
+
+    /** Contador de ciclos del polling para escalonar los PIDs lentos. */
+    private int pollCycleCounter = 0;
 
     /**
      * Descripción del último error (p. ej. "dispositivo no emparejado").
@@ -202,14 +230,89 @@ public final class ObdService extends Service implements ObdListener {
         return lastRpm;
     }
 
-    /** Valor bruto del PID 010D (km/h directo). -1 si sin dato. */
+    /** Velocidad en km/h (PID 010D directo). -1 si sin dato. */
     public int getLastSpeed() {
         return lastSpeed;
     }
 
-    /** Valor bruto del PID 0104 (% de carga). -1 si sin dato. */
+    /** Carga del motor en % (PID 0104). -1 si sin dato. */
     public int getLastLoad() {
         return lastLoad;
+    }
+
+    /** Posición del acelerador en % (PID 0111). -1 si sin dato. */
+    public int getLastThrottle() {
+        return lastThrottle;
+    }
+
+    /**
+     * Temperatura del refrigerante en °C (PID 0105).
+     * {@link Integer#MIN_VALUE} indica que aún no hay dato.
+     * Puede devolver valores negativos (frío extremo).
+     */
+    public int getLastCoolant() {
+        return lastCoolant;
+    }
+
+    /**
+     * Temperatura de admisión en °C (PID 010F, IAT).
+     * {@link Integer#MIN_VALUE} indica que aún no hay dato.
+     * Puede devolver valores negativos.
+     */
+    public int getLastIat() {
+        return lastIat;
+    }
+
+    /** Presión absoluta del colector en kPa (PID 010B). -1 si sin dato. */
+    public int getLastMapKpa() {
+        return lastMapKpa;
+    }
+
+    /**
+     * Raw del PID 015E (Engine Fuel Rate). Dividir entre 20 para obtener L/h.
+     * -1 = sin dato aún; 0 = ECU respondió con cero.
+     */
+    public int getLastFuelRateRaw() {
+        return lastFuelRateRaw;
+    }
+
+    /**
+     * Consumo instantáneo en L/h calculado por {@link FuelCalculator}.
+     * Devuelve {@link Float#NaN} si no hay datos suficientes.
+     */
+    public float getInstantLh() {
+        return fuelCalculator.getInstantLh();
+    }
+
+    /**
+     * Consumo instantáneo en L/100km.
+     * Devuelve {@link Float#NaN} si la velocidad es menor que
+     * {@link FuelCalculator#MIN_SPEED_KMH} o si no hay datos.
+     */
+    public float getInstantL100km() {
+        return fuelCalculator.getInstantL100km();
+    }
+
+    /**
+     * Consumo medio en L/100km sobre la ventana de los últimos 5 minutos.
+     * Devuelve {@link Float#NaN} si no hay muestras suficientes.
+     */
+    public float getAverageL100km() {
+        return fuelCalculator.getAverageL100km(System.currentTimeMillis());
+    }
+
+    /**
+     * Método de cálculo de consumo activo.
+     * Uno de {@link FuelCalculator#METHOD_NONE}, {@link FuelCalculator#METHOD_FUEL_RATE},
+     * {@link FuelCalculator#METHOD_MAF}, {@link FuelCalculator#METHOD_SPEED_DENSITY}.
+     */
+    public int getFuelMethod() {
+        return fuelCalculator.getActiveMethod();
+    }
+
+    /** Resetea el consumo medio (ring buffer). */
+    public void resetAverageFuel() {
+        fuelCalculator.resetAverage();
     }
 
     /** Timestamp de la última lectura en ms (epoch), o 0 si no ha llegado ninguna. */
@@ -286,10 +389,27 @@ public final class ObdService extends Service implements ObdListener {
             lastRpm = rawValue;
         } else if (PID_SPEED.equals(pid)) {
             lastSpeed = rawValue;
+            fuelCalculator.onSpeedUpdated(rawValue);
         } else if (PID_LOAD.equals(pid)) {
             lastLoad = rawValue;
+        } else if (PID_MAF.equals(pid)) {
+            fuelCalculator.onMafUpdated(rawValue);
+        } else if (PID_FUEL_RATE.equals(pid)) {
+            lastFuelRateRaw = rawValue;
+            fuelCalculator.onFuelRateUpdated(rawValue);
+        } else if (PID_THROTTLE.equals(pid)) {
+            lastThrottle = rawValue;
+            // Último PID rápido del ciclo: registrar UNA muestra por ciclo (~5 Hz).
+            // Así el ring buffer de 1600 entradas cubre ~320 s ≈ la ventana de 5 min.
+            fuelCalculator.addSample(System.currentTimeMillis());
+        } else if (PID_COOLANT.equals(pid)) {
+            lastCoolant = rawValue;
+        } else if (PID_IAT.equals(pid)) {
+            lastIat = rawValue;
+        } else if (PID_MAP.equals(pid)) {
+            lastMapKpa = rawValue;
         }
-        // 0110 (MAF) se ignora aquí hasta la Fase 3.
+
     }
 
     // =========================================================================
@@ -311,14 +431,25 @@ public final class ObdService extends Service implements ObdListener {
     /** Cancela el polling pendiente. Idempotente. */
     private void stopPolling() {
         pollingActive = false;
+        pollCycleCounter = 0;
         if (pollingHandler != null) {
             pollingHandler.removeCallbacks(pollRunnable);
         }
     }
 
     /**
-     * Runnable que encola los cuatro PIDs en el reader y se reprograma a sí mismo.
-     * Corre en el HandlerThread del servicio, no en el UI thread.
+     * Runnable de polling escalonado.
+     *
+     * <p>El ELM327 no puede procesar ~9 PIDs a 5 Hz simultáneamente sin acumular
+     * retardos. La solución es dividirlos en dos grupos:
+     * <ul>
+     *   <li><b>Rápidos</b> (cada ciclo, 5 Hz): RPM, velocidad, MAF, fuel rate, acelerador.</li>
+     *   <li><b>Lentos</b> (cada {@link #SLOW_CYCLE_COUNT} ciclos, ≈0,2 Hz): carga, refrigerante, IAT, MAP.</li>
+     * </ul>
+     * El contador {@link #pollCycleCounter} es un campo de instancia de int primitivo
+     * para no crear ningún objeto por ciclo.</p>
+     *
+     * <p>Corre en el HandlerThread del servicio, no en el UI thread.</p>
      */
     private final Runnable pollRunnable = new Runnable() {
         @Override
@@ -327,10 +458,22 @@ public final class ObdService extends Service implements ObdListener {
                 return;
             }
 
+            // --- PIDs rápidos: siempre ---
             reader.enqueuePid(PID_RPM);
             reader.enqueuePid(PID_SPEED);
-            reader.enqueuePid(PID_LOAD);
             reader.enqueuePid(PID_MAF);
+            reader.enqueuePid(PID_FUEL_RATE);
+            reader.enqueuePid(PID_THROTTLE);
+
+            // --- PIDs lentos: una vez cada SLOW_CYCLE_COUNT ciclos ---
+            pollCycleCounter++;
+            if (pollCycleCounter >= SLOW_CYCLE_COUNT) {
+                pollCycleCounter = 0;
+                reader.enqueuePid(PID_LOAD);
+                reader.enqueuePid(PID_COOLANT);
+                reader.enqueuePid(PID_IAT);
+                reader.enqueuePid(PID_MAP);
+            }
 
             if (pollingActive && pollingHandler != null) {
                 pollingHandler.postDelayed(this, POLL_INTERVAL_MS);

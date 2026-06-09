@@ -71,4 +71,31 @@
     <string name="debug_no_reading_yet">Sin lecturas aún</string>
     <!-- Valor mostrado cuando el dato no ha llegado todavía. -->
     <string name="debug_no_data">—</string>
+
+    <!-- Pantalla de debug OBD2 — Fase 3: telemetría de consumo diésel. -->
+    <string name="debug_throttle_label">Acelerador:</string>
+    <string name="debug_throttle_unit">%</string>
+    <string name="debug_coolant_label">Refrig.:</string>
+    <string name="debug_coolant_unit">°C</string>
+    <string name="debug_iat_label">Adm. (IAT):</string>
+    <string name="debug_iat_unit">°C</string>
+    <string name="debug_map_label">MAP:</string>
+    <string name="debug_map_unit">kPa</string>
+    <string name="debug_fuelrate_label">Caudal (015E):</string>
+    <string name="debug_fuelrate_unit">L/h</string>
+    <string name="debug_fuelrate_unsupported">No soportado</string>
+    <string name="debug_instant_lh_label">Consumo inst.:</string>
+    <string name="debug_instant_lh_unit">L/h</string>
+    <string name="debug_instant_l100km_label">Consumo inst.:</string>
+    <string name="debug_instant_l100km_unit">L/100km</string>
+    <string name="debug_average_l100km_label">Consumo medio:</string>
+    <string name="debug_average_l100km_unit">L/100km</string>
+    <string name="debug_fuel_method_label">Método consumo:</string>
+    <string name="debug_fuel_method_none">Sin dato</string>
+    <string name="debug_fuel_method_015e">015E (directo)</string>
+    <string name="debug_fuel_method_maf">MAF (estimado)</string>
+    <string name="debug_fuel_method_sd">Speed-Density</string>
+    <string name="debug_reset_avg_button">Reiniciar medio</string>
+    <!-- %1$.1f = valor float con 1 decimal -->
+    <string name="debug_float_format">%1$.1f</string>
 </resources>
