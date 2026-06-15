@@ -2,18 +2,19 @@ package obdmap.launcher;
 
 import android.app.Application;
 
-import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
-
 /**
- * Application de la app. Solo hace una cosa: inicializar el motor gráfico de
- * Mapsforge antes de que se infle ningún MapView (también los de XML), porque
- * la librería lo necesita listo para crear bitmaps y demás.
+ * Application de la app.
+ *
+ * VTM no necesita ninguna inicialización global en Application:
+ * su contexto gráfico se crea dentro de MapView.onSurfaceCreated().
+ * La clase queda aquí como punto de entrada por si en el futuro
+ * hay que inicializar algo más (crash reporter, etc.).
  */
 public final class OBDMapApplication extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
-        AndroidGraphicFactory.createInstance(this);
+        // Sin inicialización de VTM aquí: MapView se encarga al inflarse.
     }
 }

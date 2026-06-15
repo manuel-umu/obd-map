@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Layout principal del launcher. Estructura por capas (FrameLayout):
-        1. MapView de Mapsforge ocupando todo el fondo.
+        1. MapView de VTM (OpenGL ES 2.0) ocupando todo el fondo.
         2. Overlay con texto de estado (esquina superior izquierda).
         3. Botón "Recentrar" (esquina inferior izquierda, oculto hasta pan manual).
         4. Botón de emergencia hacia Ajustes (esquina inferior derecha, siempre visible).
@@ -13,7 +13,9 @@
     android:layout_height="match_parent"
     android:background="@color/background_dark">
 
-    <org.mapsforge.map.android.view.MapView
+    <!-- VTM MapView: renderizado vectorial sobre GLES 2.0 (compatible Mali-450).
+         Lee los mismos archivos .map de OSM que usaba Mapsforge. -->
+    <org.oscim.android.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

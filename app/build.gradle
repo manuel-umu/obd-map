@@ -18,6 +18,13 @@ android {
         // Vector drawables vía librería de soporte (más ligero que vectores nativos en API < 21,
         // aunque nuestro minSdk es 24, lo dejamos por compatibilidad de assets).
         vectorDrawables.useSupportLibrary = true
+
+        // Solo armeabi-v7a: hardware objetivo es radio 32-bit (Mali-450).
+        // Funciona también en ARM64 vía capa de compatibilidad, pero no incluimos
+        // la variante arm64 para no inflar el APK innecesariamente.
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
     }
 
     // ViewBinding habilitado desde el día 1 (sintaxis AGP 7.x).
@@ -36,6 +43,13 @@ android {
             // Nada de minify en debug para depurar cómodamente.
             minifyEnabled false
             shrinkResources false
+            // Solo en debug añadimos x86/x86_64 para poder usar el emulador de
+            // Android Studio (es x86_64). El release a la radio se queda con
+            // armeabi-v7a a secas (ver defaultConfig). Las .so x86 entran por
+            // las deps debugRuntimeOnly de abajo.
+            ndk {
+                abiFilters 'armeabi-v7a', 'x86', 'x86_64'
+            }
         }
         release {
             // ProGuard/R8 activo desde el día 1: imprescindible para llegar al
@@ -51,6 +65,12 @@ android {
         resources {
             excludes += ['META-INF/*.kotlin_module', 'META-INF/AL2.0', 'META-INF/LGPL2.1']
         }
+        // useLegacyPackaging = true garantiza que AGP empaquete los .so del jar
+        // de natives de VTM tal como vienen, sin recomprimir. Necesario para
+        // que Android pueda hacer mmap directo sobre ellos (requisito de dlopen).
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -65,11 +85,20 @@ dependencies {
     // Annotation: necesario para @IntDef (sustituto de Enums) y @NonNull/@Nullable.
     implementation 'androidx.annotation:annotation:1.1.0'
 
-    // Mapsforge: renderizado offline de mapas a partir de archivos .map de OSM.
-    // 0.18.0 es estable y plenamente compatible con compileSdk 28 / Android 7+.
-    implementation 'org.mapsforge:mapsforge-map-android:0.18.0'
+    // VTM (Vector Tile Map): renderizado OpenGL ES 2.0 sobre los mismos .map de OSM
+    // que usaba Mapsforge. Compatible con Mali-450 (GLES 2.0), que no soporta GLES 3.0.
+    // vtm: core Android (incluye oscim-android y tiling).
+    implementation 'org.mapsforge:vtm:0.25.0'
+    // vtm-themes: temas vectoriales empaquetados (DEFAULT, MOTORIDER, etc.).
+    implementation 'org.mapsforge:vtm-themes:0.25.0'
+    // vtm-android: glue de ciclo de vida entre oscim y Android.
+    implementation 'org.mapsforge:vtm-android:0.25.0'
+    // Librerías nativas (.so) para armeabi-v7a. AGP las extrae del jar automáticamente
+    // si useLegacyPackaging = true; si no, se extraen a jniLibs manualmente.
+    runtimeOnly 'org.mapsforge:vtm-android:0.25.0:natives-armeabi-v7a'
 
-    // Themes empaquetados de Mapsforge (DEFAULT, OSMARENDER, MOTORIDER…).
-    // Desde 0.16+ están en un artefacto separado para no inflar el core.
-    implementation 'org.mapsforge:mapsforge-themes:0.18.0'
+    // Solo en debug: nativas x86/x86_64 para el emulador de Android Studio.
+    // No entran en el APK de release (la radio es armeabi-v7a).
+    debugRuntimeOnly 'org.mapsforge:vtm-android:0.25.0:natives-x86_64'
+    debugRuntimeOnly 'org.mapsforge:vtm-android:0.25.0:natives-x86'
 }

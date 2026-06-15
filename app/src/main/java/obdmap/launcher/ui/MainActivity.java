@@ -20,8 +20,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import org.mapsforge.core.model.LatLong;
-
 import java.io.File;
 import java.util.Locale;
 
@@ -63,7 +61,11 @@ public final class MainActivity extends AppCompatActivity
     @Nullable private MapManager mapManager;
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
-    @Nullable private LatLong lastPosition;
+
+    // Última posición conocida (lat/lon por separado para evitar crear objetos en cada fix).
+    private double lastLat = Double.NaN;
+    private double lastLon = Double.NaN;
+
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
 
@@ -120,12 +122,15 @@ public final class MainActivity extends AppCompatActivity
             public void onClick(View view) {
                 autoCenter = true;
                 binding.recenterButton.setVisibility(View.GONE);
-                if (lastPosition != null) {
-                    binding.mapView.setCenter(lastPosition);
+                // Centramos inmediatamente si ya tenemos posición.
+                if (!Double.isNaN(lastLat) && mapManager != null) {
+                    mapManager.centerAt(lastLat, lastLon);
                 }
             }
         });
 
+        // Detectar pan manual del usuario sobre el MapView de VTM.
+        // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
         binding.mapView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent event) {
@@ -133,6 +138,7 @@ public final class MainActivity extends AppCompatActivity
                     autoCenter = false;
                     binding.recenterButton.setVisibility(View.VISIBLE);
                 }
+                // Devolvemos false para que VTM siga procesando el gesto normalmente.
                 return false;
             }
         });
@@ -250,17 +256,18 @@ public final class MainActivity extends AppCompatActivity
     }
 
     /**
-     * Monta el mapa, añade la capa de posicion y arranca el GPS.
+     * Monta el mapa VTM, añade la capa de posicion y arranca el GPS.
      */
     private void loadMap(@NonNull File mapFile) {
         prefsManager.setMapFilePath(mapFile.getAbsolutePath());
 
-        mapManager = new MapManager(this);
+        mapManager = new MapManager();
         mapManager.attachToView(binding.mapView, mapFile);
 
+        // PositionLayer necesita el Map de VTM para añadirse a las capas.
         positionLayer = new PositionLayer(
+                binding.mapView.map(),
                 ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
-        binding.mapView.getLayerManager().getLayers().add(positionLayer);
 
         binding.statusText.setText(getString(R.string.status_map_loaded, mapFile.getName()));
 
@@ -275,15 +282,18 @@ public final class MainActivity extends AppCompatActivity
     @Override
     public void onPositionUpdate(double latitude, double longitude,
                                  float bearingDegrees, boolean hasBearing, float speedMs) {
-        LatLong pos = new LatLong(latitude, longitude);
-        lastPosition = pos;
+        lastLat = latitude;
+        lastLon = longitude;
 
+        // Mover el marcador del coche en el mapa.
         if (positionLayer != null) {
-            positionLayer.updatePosition(pos, bearingDegrees, hasBearing, speedMs);
+            positionLayer.updatePosition(latitude, longitude);
         }
 
-        if (autoCenter) {
-            binding.mapView.setCenter(pos);
+        // Centrar y rotar el mapa si autoCenter está activo.
+        if (mapManager != null) {
+            mapManager.updateCar(latitude, longitude, bearingDegrees,
+                    hasBearing, speedMs, autoCenter);
         }
 
         binding.statusText.setText(R.string.status_gps_active);
@@ -356,6 +366,10 @@ public final class MainActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
+        // Notificar a VTM que la Activity vuelve al frente (reanuda el renderer GL).
+        if (mapManager != null) {
+            mapManager.onResume();
+        }
         if (gpsManager != null) {
             try {
                 gpsManager.start();
@@ -369,6 +383,10 @@ public final class MainActivity extends AppCompatActivity
     protected void onPause() {
         if (gpsManager != null) {
             gpsManager.stop();
+        }
+        // Notificar a VTM que la Activity va al fondo (pausa el renderer GL).
+        if (mapManager != null) {
+            mapManager.onPause();
         }
         super.onPause();
     }
@@ -390,7 +408,7 @@ public final class MainActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
-        // Launcher: el boton atras no hace nada.
+        // Launcher: el botón atrás no hace nada.
     }
 
     private void maybeStartObdService() {

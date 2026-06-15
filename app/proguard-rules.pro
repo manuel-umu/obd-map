@@ -27,15 +27,25 @@
 }
 
 # -----------------------------------------------------------------------------
-# Mapsforge (Fase 1)
+# VTM / oscim (sustituye a Mapsforge desde la Fase 1-VTM)
 # -----------------------------------------------------------------------------
-# Mapsforge usa serialización Java en algunos componentes internos (caches,
-# render themes). Mantenemos sus clases públicas para evitar fallos en runtime.
--keep class org.mapsforge.** { *; }
--keep interface org.mapsforge.** { *; }
--dontwarn org.mapsforge.**
+# VTM usa JNI para el renderer OpenGL (libvtm-jni.so / libgdx.so).
+# Las clases nativas se localizan por nombre desde C++, así que R8 no puede
+# renombrarlas. Mantenemos todo el paquete oscim para no romper ningún enlace.
+-keep class org.oscim.** { *; }
+-keep interface org.oscim.** { *; }
+-dontwarn org.oscim.**
 
-# AndroidSVG: dependencia transitiva usada por algunos themes de Mapsforge.
+# VTM arrastra vtm-gdx que usa libGDX internamente para la carga de recursos.
+# Mantenemos las clases gdx que VTM referencia para evitar NoClassDefFoundError.
+-keep class com.badlogic.gdx.** { *; }
+-dontwarn com.badlogic.gdx.**
+
+# MapFileTileSource lee la cabecera del .map y carga MapInfo vía reflexión interna.
+# Sin este keep, R8 elimina los setters que el reader usa dinámicamente.
+-keepclassmembers class org.oscim.tiling.source.mapfile.** { *; }
+
+# AndroidSVG: dependencia transitiva de vtm-themes (igual que en Mapsforge).
 -keep class com.caverock.androidsvg.** { *; }
 -dontwarn com.caverock.androidsvg.**
 
