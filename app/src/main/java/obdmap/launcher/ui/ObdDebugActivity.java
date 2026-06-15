@@ -93,7 +93,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
     protected void onStop() {
         if (serviceBound) {
             if (boundService != null) {
-                boundService.setServiceListener(null);
+                boundService.unregisterServiceListener(ObdDebugActivity.this);
             }
             unbindService(serviceConnection);
             serviceBound = false;
@@ -118,7 +118,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
             ObdService.LocalBinder localBinder = (ObdService.LocalBinder) binder;
             boundService = localBinder.getService();
             serviceBound = true;
-            boundService.setServiceListener(ObdDebugActivity.this);
+            boundService.registerServiceListener(ObdDebugActivity.this);
             refreshAllFields();
         }
 
@@ -140,46 +140,15 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
 
     @Override
     public void onObdDataUpdated(@NonNull String pid, int rawValue) {
+        // El repintado lo hacemos por tick de 200 ms para no redibujar por cada PID.
+    }
+
+    @Override
+    public void onObdSnapshot() {
         if (binding == null) {
             return;
         }
-
-        switch (pid) {
-            case ObdPids.RPM:
-                binding.debugRpmValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.SPEED:
-                binding.debugSpeedValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.LOAD:
-                binding.debugLoadValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.THROTTLE:
-                binding.debugThrottleValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.COOLANT:
-                // Puede ser negativo; valueOf lo formatea correctamente.
-                binding.debugCoolantValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.IAT:
-                binding.debugIatValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.MAP:
-                binding.debugMapValue.setText(String.valueOf(rawValue));
-                break;
-            case ObdPids.FUEL_RATE:
-                // rawValue es punto fijo; L/h real = raw / 20.
-                updateFuelRateField(rawValue);
-                break;
-            default:
-                break;
-        }
-
-        binding.debugLastReading.setText(
-                getString(R.string.debug_last_reading, TIME_FORMAT.format(new Date())));
-
-        // Actualizamos los campos de consumo en cada dato recibido.
-        updateFuelFields();
+        refreshAllFields();
     }
 
     // =========================================================================

@@ -1,9 +1,15 @@
 package obdmap.launcher.ui;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,50 +20,71 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import obdmap.launcher.service.ObdService;
+import org.mapsforge.core.model.LatLong;
+
+import java.io.File;
+import java.util.Locale;
 
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivityMainBinding;
 import obdmap.launcher.gps.GpsManager;
+import obdmap.launcher.map.MapDownloadListener;
+import obdmap.launcher.map.MapDownloader;
 import obdmap.launcher.map.MapFileLocator;
 import obdmap.launcher.map.MapManager;
 import obdmap.launcher.map.PositionLayer;
+import obdmap.launcher.obd.ObdPids;
+import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
-
-import org.mapsforge.core.model.LatLong;
-
-import java.io.File;
+import obdmap.launcher.service.ObdService;
+import obdmap.launcher.service.ObdServiceListener;
 
 /**
- * Pantalla principal del launcher: el mapa. Pide los permisos, monta el
- * MapView, arranca el GPS y centra el mapa en el coche (salvo que el usuario
- * lo mueva a mano, en cuyo caso aparece el botón de recentrar).
+ * Pantalla principal del launcher: el mapa.
+ *
+ * Pide permisos, carga el .map, arranca el GPS y muestra el HUD de consumo.
  */
-public final class MainActivity extends AppCompatActivity implements GpsManager.PositionListener {
+public final class MainActivity extends AppCompatActivity
+        implements GpsManager.PositionListener, ObdServiceListener {
 
-    // Código arbitrario para identificar la respuesta de requestPermissions.
     private static final int REQUEST_PERMISSIONS = 100;
 
-    // Permisos imprescindibles para Fase 1: lectura de SD (mapa) y GPS.
     private static final String[] REQUIRED_PERMISSIONS = {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
 
+    // El HUD no necesita refrescarse por cada PID. Lo limitamos a 5 Hz.
+    private static final long HUD_REFRESH_INTERVAL_MS = 200L;
+
     private ActivityMainBinding binding;
     private PrefsManager prefsManager;
 
-    // Componentes inicializados sólo cuando los permisos están concedidos
-    // y se ha encontrado un archivo .map válido.
     @Nullable private MapManager mapManager;
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
-
-    // Última posición conocida; se usa para recentrar bajo demanda.
     @Nullable private LatLong lastPosition;
+    @Nullable private MapDownloader mapDownloader;
+    @Nullable private ObdService boundService;
 
-    // Si false, las actualizaciones de GPS NO recentran el mapa (pan manual activo).
     private boolean autoCenter = true;
+    private boolean serviceBound = false;
+    private boolean hudRefreshPending = false;
+    private long lastHudRefreshMs = 0L;
+
+    private final Handler hudHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable hudRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            hudRefreshPending = false;
+            if (binding == null || boundService == null) {
+                return;
+            }
+            lastHudRefreshMs = SystemClock.uptimeMillis();
+            updateHudValue();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,8 +126,6 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
             }
         });
 
-        // Detección de pan manual: en cuanto el usuario mueve el mapa, dejamos
-        // de auto-centrar y mostramos el botón "Recentrar".
         binding.mapView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent event) {
@@ -108,10 +133,11 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
                     autoCenter = false;
                     binding.recenterButton.setVisibility(View.VISIBLE);
                 }
-                // No consumimos el evento: dejamos que MapView siga procesando el gesto.
                 return false;
             }
         });
+
+        applyHudVisibility();
 
         if (hasAllPermissions()) {
             initMapAndGps();
@@ -120,6 +146,35 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         }
 
         maybeStartObdService();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        applyHudVisibility();
+
+        String mac = prefsManager.getObdMac();
+        if (mac != null && !mac.isEmpty()) {
+            Intent bindIntent = new Intent(this, ObdService.class);
+            bindService(bindIntent, serviceConnection, BIND_AUTO_CREATE);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        hudHandler.removeCallbacks(hudRefreshRunnable);
+        hudRefreshPending = false;
+
+        if (serviceBound) {
+            if (boundService != null) {
+                boundService.unregisterServiceListener(MainActivity.this);
+            }
+            unbindService(serviceConnection);
+            serviceBound = false;
+            boundService = null;
+        }
+        super.onStop();
     }
 
     @Override
@@ -138,8 +193,8 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     }
 
     private boolean hasAllPermissions() {
-        for (int i = 0; i < REQUIRED_PERMISSIONS.length; i++) {
-            int result = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[i]);
+        for (String permission : REQUIRED_PERMISSIONS) {
+            int result = ContextCompat.checkSelfPermission(this, permission);
             if (result != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
@@ -148,21 +203,61 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
     }
 
     /**
-     * Busca el archivo .map, monta el mapa con la flecha de posición y arranca
-     * el GPS. Solo se llama cuando ya tenemos todos los permisos.
+     * Busca el .map y lo carga. Si no existe, arranca la descarga automatica.
      */
     private void initMapAndGps() {
-        File mapFile = MapFileLocator.findFirstMapFile();
-        if (mapFile == null) {
-            binding.statusText.setText(R.string.status_no_map);
+        File mapFile = MapFileLocator.findMapFile(this);
+        if (mapFile != null) {
+            loadMap(mapFile);
             return;
         }
+
+        if (mapDownloader != null && mapDownloader.isRunning()) {
+            return;
+        }
+
+        mapDownloader = new MapDownloader();
+        binding.statusText.setText(getString(R.string.status_downloading_map, 0));
+
+        mapDownloader.start(this, new MapDownloadListener() {
+            @Override
+            public void onProgress(int percent) {
+                if (binding == null) {
+                    return;
+                }
+                binding.statusText.setText(
+                        getString(R.string.status_downloading_map, percent));
+            }
+
+            @Override
+            public void onComplete(@NonNull File file) {
+                if (binding == null) {
+                    return;
+                }
+                prefsManager.setMapFilePath(file.getAbsolutePath());
+                loadMap(file);
+            }
+
+            @Override
+            public void onError(@NonNull String message) {
+                if (binding == null) {
+                    return;
+                }
+                binding.statusText.setText(
+                        getString(R.string.status_download_failed, message));
+            }
+        });
+    }
+
+    /**
+     * Monta el mapa, añade la capa de posicion y arranca el GPS.
+     */
+    private void loadMap(@NonNull File mapFile) {
         prefsManager.setMapFilePath(mapFile.getAbsolutePath());
 
         mapManager = new MapManager(this);
         mapManager.attachToView(binding.mapView, mapFile);
 
-        // Capa de posición con rotación por rumbo. El icono aparece al primer fix GPS.
         positionLayer = new PositionLayer(
                 ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
         binding.mapView.getLayerManager().getLayers().add(positionLayer);
@@ -172,15 +267,10 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         gpsManager = new GpsManager(this, this);
         try {
             gpsManager.start();
-        } catch (SecurityException ex) {
-            // No debería ocurrir: ya hemos comprobado permisos.
+        } catch (SecurityException ignored) {
             binding.statusText.setText(R.string.status_no_permissions);
         }
     }
-
-    // ------------------------------------------------------------------------
-    // GpsManager.PositionListener
-    // ------------------------------------------------------------------------
 
     @Override
     public void onPositionUpdate(double latitude, double longitude,
@@ -197,8 +287,6 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         }
 
         binding.statusText.setText(R.string.status_gps_active);
-
-        // Persistimos la última posición conocida para arranques futuros.
         prefsManager.setLastPosition((float) latitude, (float) longitude);
     }
 
@@ -207,24 +295,73 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
         binding.statusText.setText(R.string.status_gps_lost);
     }
 
-    // ------------------------------------------------------------------------
-    // Ciclo de vida
-    // ------------------------------------------------------------------------
+    @Override
+    public void onObdStateChanged(@ObdState.State int state) {
+        if (binding == null) {
+            return;
+        }
+        if (state != ObdState.READY) {
+            hudHandler.removeCallbacks(hudRefreshRunnable);
+            hudRefreshPending = false;
+            lastHudRefreshMs = 0L;
+            binding.hudFuelIndicator.setNoData();
+        }
+    }
+
+    @Override
+    public void onObdDataUpdated(@NonNull String pid, int rawValue) {
+        if (binding == null || boundService == null) {
+            return;
+        }
+
+        if (!ObdPids.SPEED.equals(pid)
+                && !ObdPids.FUEL_RATE.equals(pid)
+                && !ObdPids.MAF.equals(pid)) {
+            return;
+        }
+
+        scheduleHudRefresh();
+    }
+
+    @Override
+    public void onObdSnapshot() {
+        if (binding == null || boundService == null) {
+            return;
+        }
+        scheduleHudRefresh();
+    }
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            ObdService.LocalBinder localBinder = (ObdService.LocalBinder) binder;
+            boundService = localBinder.getService();
+            serviceBound = true;
+            boundService.registerServiceListener(MainActivity.this);
+
+            binding.hudContainer.setVisibility(View.VISIBLE);
+            hudHandler.removeCallbacks(hudRefreshRunnable);
+            hudRefreshPending = false;
+            lastHudRefreshMs = 0L;
+            scheduleHudRefresh();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            boundService = null;
+            serviceBound = false;
+        }
+    };
 
     @Override
     protected void onResume() {
         super.onResume();
-        // El GPS se para en onPause para ahorrar batería al volver atrás
-        // (ej. tras lanzar Ajustes), así que aquí lo reactivamos.
         if (gpsManager != null) {
             try {
                 gpsManager.start();
             } catch (SecurityException ignored) {
-                // Permisos revocados desde Ajustes: silencioso.
             }
         }
-
-        // Si el usuario acaba de guardar una MAC en Ajustes, arrancamos el servicio.
         maybeStartObdService();
     }
 
@@ -238,6 +375,11 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
 
     @Override
     protected void onDestroy() {
+        hudHandler.removeCallbacks(hudRefreshRunnable);
+
+        if (mapDownloader != null && mapDownloader.isRunning()) {
+            mapDownloader.cancel();
+        }
         if (mapManager != null) {
             mapManager.destroy();
             mapManager = null;
@@ -248,21 +390,75 @@ public final class MainActivity extends AppCompatActivity implements GpsManager.
 
     @Override
     public void onBackPressed() {
-        // Launcher: el botón atrás no hace nada (no hay donde volver).
+        // Launcher: el boton atras no hace nada.
     }
 
-    // ------------------------------------------------------------------------
-
-    /**
-     * Arranca el servicio OBD si hay adaptador configurado. No pasa nada por
-     * llamarlo de más: si el servicio ya existe, Android no crea otro.
-     */
     private void maybeStartObdService() {
         String mac = prefsManager.getObdMac();
         if (mac != null && !mac.isEmpty()) {
             Intent intent = new Intent(this, ObdService.class);
             ContextCompat.startForegroundService(this, intent);
         }
+    }
+
+    private void applyHudVisibility() {
+        String mac = prefsManager.getObdMac();
+        boolean hasMac = (mac != null && !mac.isEmpty());
+        if (!hasMac) {
+            hudHandler.removeCallbacks(hudRefreshRunnable);
+            hudRefreshPending = false;
+            lastHudRefreshMs = 0L;
+            binding.hudContainer.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Agrupa varios callbacks OBD en un solo refresco visual.
+     * Asi el HUD no se pinta mas de 5 veces por segundo.
+     */
+    private void scheduleHudRefresh() {
+        long now = SystemClock.uptimeMillis();
+        long elapsedMs = now - lastHudRefreshMs;
+
+        if (elapsedMs >= HUD_REFRESH_INTERVAL_MS && !hudRefreshPending) {
+            lastHudRefreshMs = now;
+            updateHudValue();
+            return;
+        }
+
+        if (hudRefreshPending) {
+            return;
+        }
+
+        long delayMs = Math.max(0L, HUD_REFRESH_INTERVAL_MS - elapsedMs);
+        hudRefreshPending = true;
+        hudHandler.postDelayed(hudRefreshRunnable, delayMs);
+    }
+
+    /**
+     * Actualiza el indicador del HUD con el consumo mas reciente del servicio.
+     * Usa L/100km en marcha y L/h cuando vamos casi parados.
+     */
+    private void updateHudValue() {
+        if (binding == null || boundService == null) {
+            return;
+        }
+
+        float l100 = boundService.getInstantL100km();
+        if (!Float.isNaN(l100)) {
+            binding.hudFuelIndicator.setUnit(getString(R.string.hud_fuel_unit_l100km));
+            binding.hudFuelIndicator.setValueText(String.format(Locale.US, "%.1f", l100));
+            return;
+        }
+
+        float lh = boundService.getInstantLh();
+        if (!Float.isNaN(lh)) {
+            binding.hudFuelIndicator.setUnit(getString(R.string.hud_fuel_unit_lh));
+            binding.hudFuelIndicator.setValueText(String.format(Locale.US, "%.1f", lh));
+            return;
+        }
+
+        binding.hudFuelIndicator.setNoData();
     }
 
     private void openSystemSettings() {

@@ -21,4 +21,10 @@ public interface ObdServiceListener {
      * @param rawValue valor decodificado, en las unidades que documenta ObdPids
      */
     void onObdDataUpdated(@NonNull String pid, int rawValue);
+
+    /**
+     * Tick periÃ³dico del servicio.
+     * La UI debe leer el estado actual y repintar los campos visibles.
+     */
+    void onObdSnapshot();
 }

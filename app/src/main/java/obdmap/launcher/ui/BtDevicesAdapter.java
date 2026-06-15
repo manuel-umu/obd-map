@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * Adaptador de la lista de dispositivos Bluetooth de Ajustes. Trabaja sobre
- * la misma lista que mantiene la Activity (referencia compartida, no copia)
- * y resalta el dispositivo elegido como adaptador OBD.
+ * la misma lista que mantiene la Activity y resalta el dispositivo elegido
+ * como adaptador OBD.
  *
  * Los colores se resuelven una sola vez en el constructor: la lista se
  * repinta mucho durante el escaneo y no queremos consultar resources por fila.
@@ -48,14 +48,13 @@ final class BtDevicesAdapter extends BaseAdapter {
         this.inflater = LayoutInflater.from(context);
         this.devices  = devices;
 
-        colorSelected      = ContextCompat.getColor(context, R.color.primary_dark);
-        colorBonded        = ContextCompat.getColor(context, R.color.surface_dark);
-        colorUnpaired      = ContextCompat.getColor(context, R.color.surface_unpaired);
-        colorBadgePaired   = ContextCompat.getColor(context, R.color.text_paired);
+        colorSelected = ContextCompat.getColor(context, R.color.primary_dark);
+        colorBonded = ContextCompat.getColor(context, R.color.surface_dark);
+        colorUnpaired = ContextCompat.getColor(context, R.color.surface_unpaired);
+        colorBadgePaired = ContextCompat.getColor(context, R.color.text_paired);
         colorBadgeUnpaired = ContextCompat.getColor(context, R.color.text_unpaired);
     }
 
-    /** Cambia la MAC resaltada. Llamar a notifyDataSetChanged() después. */
     void setSelectedMac(@Nullable String mac) {
         this.selectedMac = mac;
     }

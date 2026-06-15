@@ -41,6 +41,10 @@
     <string name="status_map_loaded">Mapa: %1$s · esperando GPS…</string>
     <string name="status_gps_active">GPS activo</string>
     <string name="status_gps_lost">GPS perdido</string>
+    <!-- %1$d = porcentaje de descarga (0-100). -->
+    <string name="status_downloading_map">Descargando mapa de Murcia… %1$d%%</string>
+    <!-- %1$s = descripción breve del error. -->
+    <string name="status_download_failed">No se pudo descargar el mapa: %1$s</string>
 
     <!-- Botón de acceso a la pantalla de debug OBD2 (Bloque C). -->
     <string name="open_obd_debug_button">Debug OBD</string>
@@ -100,4 +104,14 @@
     <string name="debug_reset_avg_button">Reiniciar medio</string>
     <!-- %1$.1f = valor float con 1 decimal -->
     <string name="debug_float_format">%1$.1f</string>
+
+    <!-- HUD de consumo en la pantalla principal (paso 3.5). -->
+    <!-- Etiqueta del indicador de consumo instantáneo. -->
+    <string name="hud_fuel_label">Consumo</string>
+    <!-- Unidad cuando el coche supera el umbral de velocidad (L/100km). -->
+    <string name="hud_fuel_unit_l100km">L/100km</string>
+    <!-- Unidad cuando el coche está parado o muy lento (L/h). -->
+    <string name="hud_fuel_unit_lh">L/h</string>
+    <!-- %1$.1f = consumo con 1 decimal (p. ej. "7.3") -->
+    <string name="hud_fuel_value_format">%1$.1f</string>
 </resources>

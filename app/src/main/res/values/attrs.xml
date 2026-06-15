@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Atributos XML personalizados para IndicatorView.
+        Permiten configurar etiqueta y unidad directamente desde el layout,
+        sin necesidad de hacerlo desde código en cada uso.
+    -->
+    <declare-styleable name="IndicatorView">
+        <!-- Texto de la etiqueta superior (p. ej. "Consumo", "RPM"). -->
+        <attr name="label" format="string" />
+        <!-- Texto de la unidad inferior (p. ej. "L/100km", "rpm"). -->
+        <attr name="unit" format="string" />
+    </declare-styleable>
+</resources>

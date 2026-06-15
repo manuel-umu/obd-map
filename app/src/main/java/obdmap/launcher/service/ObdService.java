@@ -7,12 +7,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import obdmap.launcher.BuildConfig;
 import obdmap.launcher.R;
 import obdmap.launcher.obd.BluetoothObdReader;
 import obdmap.launcher.obd.FuelCalculator;
@@ -20,6 +16,8 @@ import obdmap.launcher.obd.ObdListener;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
+
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Foreground Service que mantiene vivo el lector OBD durante todo el trayecto,
@@ -32,9 +30,6 @@ public final class ObdService extends Service implements ObdListener {
 
     private static final String TAG = "ObdService";
 
-    // Los PIDs y sus fórmulas viven en ObdPids (fuente única de verdad).
-    // Aquí solo se decide CUÁNDO se sondea cada uno (rápidos vs lentos).
-
     /** Cada cuánto se piden los PIDs rápidos: 200 ms = 5 Hz. */
     private static final long POLL_INTERVAL_MS = 200L;
 
@@ -46,7 +41,7 @@ public final class ObdService extends Service implements ObdListener {
     // -------------------------------------------------------------------------
     @Nullable private BluetoothObdReader reader;
 
-    /** Estado actual del reader; leído desde cualquier hilo. */
+    /** Estado actual del reader */
     @ObdState.State
     private volatile int currentState = ObdState.DISCONNECTED;
 
@@ -61,13 +56,13 @@ public final class ObdService extends Service implements ObdListener {
     // lastFuelRateRaw: -1 = sin dato; 0 = ECU respondió pero con valor cero.
     private volatile int lastFuelRateRaw = -1;
 
-    /** Timestamp (System.currentTimeMillis) de la última lectura de cualquier PID. */
+    /** Timestamp de la última lectura de cualquier PID. */
     private volatile long lastReadingTimestampMs = 0L;
 
-    /** Calculadora de consumo; instanciada una vez, sin dependencias externas. */
+    /** Calculadora de consumo */
     private final FuelCalculator fuelCalculator = new FuelCalculator();
 
-    /** Gestiona la notificación persistente del foreground service. */
+    /** Gestiona la notificación persistente del service. */
     @Nullable private ObdNotifications notifications;
 
     /** Contador de ciclos del polling para escalonar los PIDs lentos. */
@@ -89,8 +84,9 @@ public final class ObdService extends Service implements ObdListener {
     // Handler sobre el main looper para repostear callbacks a la UI.
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    /** Listener registrado por la Activity de debug. Puede ser null. */
-    @Nullable private ObdServiceListener serviceListener;
+    /** Activities registradas para recibir actualizaciones. */
+    private final CopyOnWriteArrayList<ObdServiceListener> serviceListeners =
+            new CopyOnWriteArrayList<>();
 
     // -------------------------------------------------------------------------
     // Binder
@@ -123,11 +119,6 @@ public final class ObdService extends Service implements ObdListener {
         notifications.createChannel();
 
         if (mac == null || mac.isEmpty() || !android.bluetooth.BluetoothAdapter.checkBluetoothAddress(mac)) {
-            if (BuildConfig.DEBUG) {
-                Log.w(TAG, "MAC inválida o no configurada — servicio detenido sin lanzar reader");
-            }
-            // Necesitamos startForeground antes de stopSelf en API 26+
-            // para evitar ANR de "Context.startForegroundService() did not call startForeground()".
             startForeground(ObdNotifications.NOTIFICATION_ID,
                     notifications.build(getString(R.string.obd_notif_no_mac)));
             stopSelf();
@@ -147,8 +138,6 @@ public final class ObdService extends Service implements ObdListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // El servicio se arranca con startForegroundService; no necesitamos
-        // reaccionar a intents extra en esta fase.
         return START_STICKY;
     }
 
@@ -179,14 +168,16 @@ public final class ObdService extends Service implements ObdListener {
     // API pública para la Activity de debug
     // =========================================================================
 
-    /**
-     * Registra quién recibe las actualizaciones (en el main thread).
-     * Solo puede haber uno a la vez; pasar null para desregistrar.
-     */
-    public void setServiceListener(@Nullable ObdServiceListener listener) {
-        // No se necesita sincronización: las Activities hacen bind/unbind en el
-        // main thread, y las notificaciones se postean al main thread también.
-        serviceListener = listener;
+    /** Registra una Activity para recibir actualizaciones. */
+    public void registerServiceListener(@NonNull ObdServiceListener listener) {
+        if (!serviceListeners.contains(listener)) {
+            serviceListeners.add(listener);
+        }
+    }
+
+    /** Quita una Activity de la lista de receptores. */
+    public void unregisterServiceListener(@NonNull ObdServiceListener listener) {
+        serviceListeners.remove(listener);
     }
 
     /** Devuelve el estado actual del reader. Seguro desde cualquier hilo. */
@@ -302,8 +293,8 @@ public final class ObdService extends Service implements ObdListener {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (serviceListener != null) {
-                    serviceListener.onObdStateChanged(state);
+                for (ObdServiceListener listener : serviceListeners) {
+                    listener.onObdStateChanged(state);
                 }
             }
         });
@@ -317,8 +308,8 @@ public final class ObdService extends Service implements ObdListener {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (serviceListener != null) {
-                    serviceListener.onObdDataUpdated(pid, rawValue);
+                for (ObdServiceListener listener : serviceListeners) {
+                    listener.onObdDataUpdated(pid, rawValue);
                 }
             }
         });
@@ -330,10 +321,17 @@ public final class ObdService extends Service implements ObdListener {
         if (currentState == ObdState.FAILED) {
             lastErrorDescription = description;
         }
+    }
 
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "ObdError pid=" + pid + " " + description);
-        }
+    private void postSnapshot() {
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                for (ObdServiceListener listener : serviceListeners) {
+                    listener.onObdSnapshot();
+                }
+            }
+        });
     }
 
     // =========================================================================
@@ -424,6 +422,8 @@ public final class ObdService extends Service implements ObdListener {
             if (pollingActive && pollingHandler != null) {
                 pollingHandler.postDelayed(this, POLL_INTERVAL_MS);
             }
+
+            postSnapshot();
         }
     };
 

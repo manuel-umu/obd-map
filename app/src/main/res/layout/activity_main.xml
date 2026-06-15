@@ -8,6 +8,7 @@
     El orden de los hijos en XML es importante: el último se dibuja por encima.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_dark">
@@ -17,17 +18,56 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <TextView
-        android:id="@+id/statusText"
+    <!--
+        Columna de overlays superior izquierda: primero el HUD de consumo y
+        luego el texto de estado del GPS/mapa. El LinearLayout vertical los
+        apila sin que se solapen.
+        El layout_margin es el mismo 16dp que tenía el statusText para mantener
+        el margen visual original.
+    -->
+    <LinearLayout
+        android:id="@+id/topStartOverlay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_margin="16dp"
-        android:background="#80000000"
-        android:padding="10dp"
-        android:text="@string/status_initializing"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp" />
+        android:orientation="vertical">
+
+        <!--
+            Contenedor del HUD de consumo. Empieza GONE si no hay MAC
+            configurada; MainActivity lo hace VISIBLE al hacer bind al servicio.
+            El fondo semitransparente va aquí para que el IndicatorView no
+            necesite pintarlo él mismo (la View no pinta fondo propio).
+        -->
+        <FrameLayout
+            android:id="@+id/hudContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:background="#CC101418"
+            android:padding="8dp"
+            android:visibility="gone">
+
+            <obdmap.launcher.ui.IndicatorView
+                android:id="@+id/hudFuelIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:label="@string/hud_fuel_label"
+                app:unit="@string/hud_fuel_unit_l100km" />
+
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#80000000"
+            android:padding="10dp"
+            android:text="@string/status_initializing"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <Button
         android:id="@+id/recenterButton"

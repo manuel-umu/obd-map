@@ -20,6 +20,14 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <!--
+        ÚNICA excepción a la filosofía offline: descarga puntual del mapa la
+        primera vez que arranca la app sin ningún .map presente. En cuanto el
+        mapa está en disco, la app no vuelve a necesitar red. INTERNET es un
+        permiso "normal" (no runtime), así que no hay diálogo al usuario.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
         Iconos por defecto del sistema en Fase 0. Se generarán los mipmap propios
         más adelante (Android Studio → New → Image Asset) y se reañadirán los
         atributos android:icon y android:roundIcon.

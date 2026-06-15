@@ -1,7 +1,9 @@
 package obdmap.launcher.map;
 
+import android.content.Context;
 import android.os.Environment;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.File;
@@ -31,6 +33,23 @@ public final class MapFileLocator {
 
     private MapFileLocator() {
         // Utilidad estática, no se instancia.
+    }
+
+    /**
+     * Punto de entrada principal. Busca el mapa en este orden de prioridad:
+     *   1. El fichero descargado por MapDownloader (directorio privado de la app).
+     *   2. El primer .map que el usuario haya copiado a mano en Download/.
+     * Devuelve null si no hay ningún .map disponible.
+     */
+    @Nullable
+    public static File findMapFile(@NonNull Context ctx) {
+        // Primero el mapa descargado automáticamente.
+        File downloaded = MapDownloader.getMapFile(ctx);
+        if (downloaded.isFile()) {
+            return downloaded;
+        }
+        // Fallback: .map copiado manualmente por el usuario.
+        return findFirstMapFile();
     }
 
     /** El primer .map que haya en Download/, o null si no hay ninguno. */

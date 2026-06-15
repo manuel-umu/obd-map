@@ -18,7 +18,7 @@ import androidx.annotation.NonNull;
 public final class GpsManager {
 
     /** Frecuencia mínima de actualización solicitada al proveedor (ms). */
-    private static final long MIN_INTERVAL_MS = 1000L;
+    private static final long MIN_INTERVAL_MS = 200L;
 
     /** Distancia mínima entre actualizaciones (m). 0 = no filtrar por distancia. */
     private static final float MIN_DISTANCE_M = 0f;
