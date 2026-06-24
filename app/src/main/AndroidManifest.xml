@@ -86,6 +86,12 @@
             android:name=".service.ObdService"
             android:exported="false" />
 
+        <!-- Pantalla de introducción manual del destino de ruta (Fase 4, paso 4.3). -->
+        <activity
+            android:name=".ui.DestinationActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
     </application>
 
 </manifest>

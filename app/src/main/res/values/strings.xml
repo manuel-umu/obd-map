@@ -105,6 +105,17 @@
     <!-- %1$.1f = valor float con 1 decimal -->
     <string name="debug_float_format">%1$.1f</string>
 
+    <!-- Pantalla de destino (Fase 4, paso 4.3). -->
+    <string name="title_destination">Fijar destino</string>
+    <string name="hint_latitude">Latitud (ej: 37.9922)</string>
+    <string name="hint_longitude">Longitud (ej: -1.1307)</string>
+    <string name="btn_set_destination">Fijar destino</string>
+    <string name="btn_cancel">Cancelar</string>
+    <string name="toast_destination_set">Destino fijado</string>
+    <string name="toast_invalid_coordinates">Coordenadas no válidas</string>
+    <!-- Botón en MainActivity para abrir la pantalla de destino. -->
+    <string name="open_destination_button">Destino</string>
+
     <!-- HUD de consumo en la pantalla principal (paso 3.5). -->
     <!-- Etiqueta del indicador de consumo instantáneo. -->
     <string name="hud_fuel_label">Consumo</string>

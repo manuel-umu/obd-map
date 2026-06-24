@@ -117,6 +117,13 @@ public final class MainActivity extends AppCompatActivity
             }
         });
 
+        binding.openDestinationButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, DestinationActivity.class));
+            }
+        });
+
         binding.recenterButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

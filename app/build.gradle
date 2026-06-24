@@ -12,8 +12,9 @@ android {
         versionCode 1
         versionName "0.1.0-fase0"
 
-        // Sin multidex: el proyecto debe caber holgadamente en un solo dex.
-        multiDexEnabled false
+        // GraphHopper core supera el límite de 64K métodos en un solo dex;
+        // multidex es obligatorio a partir de esta dependencia.
+        multiDexEnabled true
 
         // Vector drawables vía librería de soporte (más ligero que vectores nativos en API < 21,
         // aunque nuestro minSdk es 24, lo dejamos por compatibilidad de assets).
@@ -61,9 +62,34 @@ android {
     }
 
     // Excluye metadatos innecesarios que vienen en algunas dependencias.
+    // Fuerza una versión única de protobuf-java para resolver conflictos entre la
+    // versión que GraphHopper requiere y versiones distintas traídas por transitivas.
+    configurations.all {
+        resolutionStrategy {
+            force 'com.google.protobuf:protobuf-java:3.21.12'
+        }
+    }
+
     packagingOptions {
         resources {
-            excludes += ['META-INF/*.kotlin_module', 'META-INF/AL2.0', 'META-INF/LGPL2.1']
+            excludes += [
+                'META-INF/*.kotlin_module',
+                'META-INF/AL2.0',
+                'META-INF/LGPL2.1',
+                // GraphHopper y sus transitivas incluyen estos metadatos que colisionan
+                // cuando se empaquetan varios JARs en un mismo APK.
+                'META-INF/LICENSE',
+                'META-INF/LICENSE.txt',
+                'META-INF/NOTICE',
+                'META-INF/NOTICE.txt',
+                'META-INF/*.SF',
+                'META-INF/*.DSA',
+                'META-INF/*.RSA',
+                // SLF4J registra implementaciones vía ServiceLoader; excluimos el archivo
+                // de servicio para evitar colisiones entre las distintas implementaciones
+                // que arrastran GraphHopper y sus transitivas.
+                'META-INF/services/org.slf4j.spi.SLF4JServiceProvider'
+            ]
         }
         // useLegacyPackaging = true garantiza que AGP empaquete los .so del jar
         // de natives de VTM tal como vienen, sin recomprimir. Necesario para
@@ -101,4 +127,9 @@ dependencies {
     // No entran en el APK de release (la radio es armeabi-v7a).
     debugRuntimeOnly 'org.mapsforge:vtm-android:0.25.0:natives-x86_64'
     debugRuntimeOnly 'org.mapsforge:vtm-android:0.25.0:natives-x86'
+
+    // GraphHopper: cálculo de rutas offline sobre grafos OSM precompilados.
+    // Solo se usa graphhopper-core en la app Android; graphhopper-reader-osm
+    // solo se necesita en el builder de escritorio (ver /c/gh-build/).
+    implementation 'com.graphhopper:graphhopper-core:1.0'
 }

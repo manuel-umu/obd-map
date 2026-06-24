@@ -36,6 +36,10 @@ public final class MapManager {
     // ~50 = reclinada para ver la carretera al frente. Máximo de VTM ~65.
     private static final float DRIVE_TILT = 50.0f;
 
+    // Posición vertical del coche en pantalla. 0 = centro; 0.5 = tercio inferior
+    // (preset de navegación de VTM, deja más carretera visible por delante).
+    private static final float MAP_CENTER_OFFSET_Y = 0.5f;
+
     // Centro de España como fallback si el boundingBox del .map no es válido.
     private static final double FALLBACK_LAT = 40.416775;
     private static final double FALLBACK_LON = -3.703790;
@@ -66,6 +70,10 @@ public final class MapManager {
     public void attachToView(@NonNull MapView view, @NonNull File mapFilePath) {
         this.mapView = view;
         this.map = view.map();
+
+        // Bajar el punto del coche al tercio inferior (estilo navegador): así se
+        // ve más carretera por delante. Es config de viewport, se hace una vez.
+        map.viewport().setMapViewCenter(0f, MAP_CENTER_OFFSET_Y);
 
         tileSource = new MapFileTileSource();
         // setMapFile devuelve false si el archivo no existe o está corrupto

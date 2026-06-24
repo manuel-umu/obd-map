@@ -139,6 +139,20 @@
             android:textColor="@color/text_primary"
             android:textSize="16sp" />
 
+        <!-- Botón para fijar el destino de ruta (Fase 4, paso 4.3). -->
+        <Button
+            android:id="@+id/openDestinationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@color/primary"
+            android:minHeight="56dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:text="@string/open_destination_button"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+
     </LinearLayout>
 
 </FrameLayout>
