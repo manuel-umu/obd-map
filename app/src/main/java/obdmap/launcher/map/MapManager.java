@@ -6,6 +6,7 @@ import org.oscim.android.MapView;
 import org.oscim.core.BoundingBox;
 import org.oscim.core.GeoPoint;
 import org.oscim.core.MapPosition;
+import org.oscim.layers.PathLayer;
 import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
@@ -15,6 +16,8 @@ import org.oscim.tiling.source.mapfile.MapInfo;
 import org.oscim.layers.tile.vector.VectorTileLayer;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Monta y configura el mapa sobre VTM (OpenGL ES 2.0).
@@ -40,6 +43,10 @@ public final class MapManager {
     // (preset de navegación de VTM, deja más carretera visible por delante).
     private static final float MAP_CENTER_OFFSET_Y = 0.5f;
 
+    // Estilo de la línea de ruta (azul tipo navegador). El ancho está en píxeles.
+    private static final int   ROUTE_COLOR = 0xFF1A73E8;
+    private static final float ROUTE_WIDTH = 6.0f;
+
     // Centro de España como fallback si el boundingBox del .map no es válido.
     private static final double FALLBACK_LAT = 40.416775;
     private static final double FALLBACK_LON = -3.703790;
@@ -53,6 +60,9 @@ public final class MapManager {
     private MapView mapView;
     private Map map;
     private MapFileTileSource tileSource;
+
+    // Capa de la polilínea de ruta. Vacía hasta que se calcula una ruta.
+    private PathLayer routeLayer;
 
     // Posición reutilizable para leer el estado actual del mapa — no se pasa al animador.
     private final MapPosition reusablePosition = new MapPosition();
@@ -91,6 +101,11 @@ public final class MapManager {
 
         // Etiquetas de calles y puntos de interes
         map.layers().add(new LabelLayer(map, baseLayer));
+
+        // Capa de ruta, vacía de momento. Se añade ANTES que el marcador del coche
+        // (que MainActivity crea después) para que el coche se dibuje por encima.
+        routeLayer = new PathLayer(map, ROUTE_COLOR, ROUTE_WIDTH);
+        map.layers().add(routeLayer);
 
         // Centrar en el medio del bounding box del archivo .map.
         MapInfo info = tileSource.getMapInfo();
@@ -175,6 +190,31 @@ public final class MapManager {
 
         // animateTo reemplaza cualquier animación en curso
         map.animator().animateTo(ANIM_DURATION_MS, targetPos);
+    }
+
+    /**
+     * Dibuja la polilínea de la ruta sobre el mapa. Sustituye la ruta anterior
+     * si la había. Los puntos llegan como arrays paralelos lat/lon.
+     */
+    public void showRoute(@NonNull double[] lats, @NonNull double[] lons) {
+        if (routeLayer == null || map == null) {
+            return;
+        }
+        int n = Math.min(lats.length, lons.length);
+        List<GeoPoint> points = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            points.add(new GeoPoint(lats[i], lons[i]));
+        }
+        routeLayer.setPoints(points);
+        map.updateMap(true);
+    }
+
+    // Borra la ruta dibujada (al cancelar destino o calcular otra).
+    public void clearRoute() {
+        if (routeLayer != null && map != null) {
+            routeLayer.clearPath();
+            map.updateMap(true);
+        }
     }
 
     /**

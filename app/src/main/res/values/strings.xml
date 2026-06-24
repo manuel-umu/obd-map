@@ -116,6 +116,12 @@
     <!-- Botón en MainActivity para abrir la pantalla de destino. -->
     <string name="open_destination_button">Destino</string>
 
+    <!-- Ruta calculada (paso 4.4). -->
+    <!-- %1$s = distancia en km (p. ej. "12.3"), %2$s = tiempo en minutos (p. ej. "18"). -->
+    <string name="route_summary">Ruta: %1$s km · %2$s min</string>
+    <!-- Error genérico de routing mostrado en statusText. %1$s = mensaje de error. -->
+    <string name="route_error">Error de ruta: %1$s</string>
+
     <!-- HUD de consumo en la pantalla principal (paso 3.5). -->
     <!-- Etiqueta del indicador de consumo instantáneo. -->
     <string name="hud_fuel_label">Consumo</string>

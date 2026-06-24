@@ -34,6 +34,8 @@ import obdmap.launcher.map.PositionLayer;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.routing.Route;
+import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
 
@@ -68,6 +70,14 @@ public final class MainActivity extends AppCompatActivity
 
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
+
+    // Última ruta calculada; null si aún no hay ruta. 4.5 la leerá para dibujarla.
+    @Nullable Route currentRoute;
+
+    // Coordenadas del último destino para el que se disparó el cálculo.
+    // Evita recalcular en cada fix GPS cuando el destino no ha cambiado.
+    private float lastCalculatedDestLat = Float.NaN;
+    private float lastCalculatedDestLon = Float.NaN;
 
     private boolean autoCenter = true;
     private boolean serviceBound = false;
@@ -305,6 +315,9 @@ public final class MainActivity extends AppCompatActivity
 
         binding.statusText.setText(R.string.status_gps_active);
         prefsManager.setLastPosition((float) latitude, (float) longitude);
+
+        // Intentar calcular la ruta si hay destino y el grafo está disponible.
+        maybeCalculateRoute();
     }
 
     @Override
@@ -384,6 +397,19 @@ public final class MainActivity extends AppCompatActivity
             }
         }
         maybeStartObdService();
+
+        // Al volver a primer plano: si el destino cambió mientras estábamos en pausa,
+        // resetear para que se recalcule en el próximo fix GPS.
+        float destLat = prefsManager.getDestLat();
+        float destLon = prefsManager.getDestLon();
+        if (destLat != lastCalculatedDestLat || destLon != lastCalculatedDestLon) {
+            lastCalculatedDestLat = Float.NaN;
+            lastCalculatedDestLon = Float.NaN;
+            currentRoute = null;
+        }
+
+        // Si ya tenemos posición y hay destino, intentamos calcular ahora mismo.
+        maybeCalculateRoute();
     }
 
     @Override
@@ -484,6 +510,116 @@ public final class MainActivity extends AppCompatActivity
         }
 
         binding.hudFuelIndicator.setNoData();
+    }
+
+    /**
+     * Dispara el cálculo de ruta si se dan las tres condiciones:
+     * hay posición GPS, hay destino en prefs, y el grafo está READY.
+     * Si el grafo no está READY pero hay destino, arranca la carga.
+     * No recalcula si el destino no ha cambiado respecto al último cálculo.
+     */
+    private void maybeCalculateRoute() {
+        if (Double.isNaN(lastLat) || Double.isNaN(lastLon)) {
+            // Sin posición GPS todavía.
+            return;
+        }
+
+        float destLat = prefsManager.getDestLat();
+        float destLon = prefsManager.getDestLon();
+
+        if (Float.isNaN(destLat) || Float.isNaN(destLon)) {
+            // No hay destino configurado.
+            return;
+        }
+
+        // Evitar recalcular si ya se calculó para este mismo destino.
+        if (destLat == lastCalculatedDestLat && destLon == lastCalculatedDestLon) {
+            return;
+        }
+
+        RoutingManager rm = RoutingManager.getInstance();
+
+        if (rm.getState() == RoutingManager.STATE_READY) {
+            launchRouteCalculation(destLat, destLon);
+            return;
+        }
+
+        if (rm.getState() == RoutingManager.STATE_LOADING) {
+            // Ya está cargando; cuando termine disparará el cálculo via onRoutingReady.
+            return;
+        }
+
+        // Grafo no cargado aún: arrancamos la carga. El callback disparará el cálculo.
+        rm.startLoading(this, new RoutingManager.RoutingListener() {
+            @Override
+            public void onRoutingReady() {
+                if (binding == null) {
+                    return;
+                }
+                float dLat = prefsManager.getDestLat();
+                float dLon = prefsManager.getDestLon();
+                if (!Float.isNaN(dLat) && !Float.isNaN(dLon)) {
+                    launchRouteCalculation(dLat, dLon);
+                }
+            }
+
+            @Override
+            public void onRoutingError(@NonNull String message) {
+                if (binding == null) {
+                    return;
+                }
+                binding.statusText.setText(getString(R.string.route_error, message));
+            }
+
+            @Override
+            public void onRoutingProgress(@NonNull String status) {
+                if (binding != null) {
+                    binding.statusText.setText(status);
+                }
+            }
+        });
+    }
+
+    // Lanza el cálculo real de la ruta en RoutingManager.
+    private void launchRouteCalculation(final float destLat, final float destLon) {
+        // Marcamos ya el destino calculado para no repetir si llega otro fix antes de que termine.
+        lastCalculatedDestLat = destLat;
+        lastCalculatedDestLon = destLon;
+
+        RoutingManager.getInstance().calculateRoute(
+                lastLat, lastLon,
+                destLat, destLon,
+                new RoutingManager.RouteCallback() {
+                    @Override
+                    public void onRouteReady(@NonNull Route route) {
+                        if (binding == null) {
+                            return;
+                        }
+                        currentRoute = route;
+
+                        // Dibujar la polilínea de la ruta sobre el mapa VTM.
+                        if (mapManager != null) {
+                            mapManager.showRoute(route.lats, route.lons);
+                        }
+
+                        // Distancia en km con 1 decimal, tiempo en minutos enteros.
+                        double km = route.distanceMeters / 1000.0;
+                        long minutes = route.timeMs / 60000L;
+
+                        binding.statusText.setText(getString(
+                                R.string.route_summary,
+                                String.format(Locale.US, "%.1f", km),
+                                String.valueOf(minutes)));
+                    }
+
+                    @Override
+                    public void onRouteError(@NonNull String message) {
+                        if (binding == null) {
+                            return;
+                        }
+                        binding.statusText.setText(getString(R.string.route_error, message));
+                    }
+                });
     }
 
     private void openSystemSettings() {

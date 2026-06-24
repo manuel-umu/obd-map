@@ -9,9 +9,14 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.graphhopper.GHRequest;
+import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
+import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
 import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.util.Parameters;
+import com.graphhopper.util.PointList;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,22 +30,11 @@ import java.util.zip.ZipInputStream;
 
 /**
  * Singleton que gestiona el ciclo de vida del grafo de GraphHopper offline.
- *
- * El grafo se empaqueta como asset ZIP (murcia-gh.zip) en el APK. La primera
- * vez que se llama a startLoading(), se extrae al directorio de datos interno
- * de la app y luego se carga con MMAP (setMemoryMapped()), reduciendo el
- * footprint en heap al mínimo posible en la radio de 1 GB de RAM.
- *
- * El estado se consulta con getState() y los resultados se notifican vía
- * RoutingListener siempre en el hilo principal.
- *
- * No hay Dagger, no hay Kotlin, no hay RxJava: el hilo de carga es un Thread
- * simple que envía mensajes al Handler del main looper.
  */
 public final class RoutingManager {
 
     // ------------------------------------------------------------------
-    // Constantes de estado (sustituyen a un Enum: regla del proyecto)
+    // Constantes de estado
     // ------------------------------------------------------------------
     public static final int STATE_IDLE = 0;
     public static final int STATE_LOADING = 1;
@@ -51,18 +45,12 @@ public final class RoutingManager {
     @Retention(RetentionPolicy.SOURCE)
     public @interface State {}
 
-    // Nombre del asset ZIP que contiene el grafo precompilado.
     private static final String ASSET_ZIP_NAME = "murcia-gh.zip";
-    // Subdirectorio dentro de getFilesDir() donde se extrae el grafo.
     private static final String GRAPH_DIR_NAME = "murcia-gh";
 
-    // ------------------------------------------------------------------
-    // Singleton — instanciación manual, sin inyección de dependencias
-    // ------------------------------------------------------------------
     @Nullable
     private static volatile RoutingManager instance;
 
-    /** Devuelve la instancia única de RoutingManager. */
     @NonNull
     public static RoutingManager getInstance() {
         if (instance == null) {
@@ -75,67 +63,152 @@ public final class RoutingManager {
         return instance;
     }
 
-    // ------------------------------------------------------------------
-    // Estado interno
-    // ------------------------------------------------------------------
     @State
     private volatile int state = STATE_IDLE;
-
     @Nullable
     private GraphHopper hopper;
-
     @Nullable
     private String lastError;
-
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private RoutingManager() {}
 
     // ------------------------------------------------------------------
-    // Interfaz de escucha (callbacks en el hilo principal)
+    // Interfaz de callback para el resultado de calculateRoute
+    // ------------------------------------------------------------------
+    public interface RouteCallback {
+        void onRouteReady(@NonNull Route route);
+        void onRouteError(@NonNull String message);
+    }
+
+    // ------------------------------------------------------------------
+    // Interfaz de escucha
     // ------------------------------------------------------------------
     public interface RoutingListener {
-        /** El grafo está listo para calcular rutas. */
         void onRoutingReady();
-        /** Se produjo un error durante la extracción o carga del grafo. */
         void onRoutingError(@NonNull String message);
-        /** Progreso informativo durante la extracción y carga. */
         void onRoutingProgress(@NonNull String status);
     }
 
     // ------------------------------------------------------------------
     // API pública
     // ------------------------------------------------------------------
-
-    /** Devuelve el estado actual del grafo. Seguro desde cualquier hilo. */
     @State
     public int getState() {
         return state;
     }
-
-    /**
-     * Devuelve la instancia de GraphHopper lista para calcular rutas, o null
-     * si el grafo no se ha cargado todavía (state != STATE_READY).
-     */
     @Nullable
     public GraphHopper getHopper() {
         return hopper;
     }
-
-    /** Devuelve el último mensaje de error, o null si no hubo error. */
     @Nullable
     public String getLastError() {
         return lastError;
     }
 
     /**
-     * Inicia la extracción del asset ZIP y la carga MMAP del grafo en un
-     * hilo de fondo. Solo arranca si el estado es STATE_IDLE; si ya está
-     * cargando o listo, notifica inmediatamente al listener.
-     *
-     * @param context  Contexto de la app para acceder a assets y filesDir.
-     * @param listener Callbacks de resultado, invocados en el hilo principal.
+     * Calcula una ruta entre dos coordenadas
      */
+    @MainThread
+    public void calculateRoute(final double fromLat, final double fromLon,
+                               final double toLat, final double toLon,
+                               @NonNull final RouteCallback cb) {
+        if (state != STATE_READY || hopper == null) {
+            final String msg = "grafo no cargado";
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    cb.onRouteError(msg);
+                }
+            });
+            return;
+        }
+        final GraphHopper gh = hopper;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                routeInBackground(gh, fromLat, fromLon, toLat, toLon, cb);
+            }
+        }, "gh-route").start();
+    }
+
+    /**
+     *  Ejecuta el cálculo de ruta en el hilo gh-route.
+     */
+    private void routeInBackground(GraphHopper gh,
+                                   double fromLat, double fromLon,
+                                   double toLat, double toLon,
+                                   final RouteCallback cb) {
+        try {
+            GHRequest req = new GHRequest(fromLat, fromLon, toLat, toLon);
+            req.setProfile("car");
+            // Se desactivan ambos para que se use Dijkstra/A* puro sin intentar CH.
+            // TODO: Reactivar cuando haya server
+            req.putHint(Parameters.CH.DISABLE, true);
+            req.putHint(Parameters.Landmark.DISABLE, true);
+
+            GHResponse rsp = gh.route(req);
+
+            if (rsp.hasErrors()) {
+                final StringBuilder sb = new StringBuilder();
+                for (Throwable t : rsp.getErrors()) {
+                    if (sb.length() > 0) {
+                        sb.append("; ");
+                    }
+                    sb.append(t.getMessage());
+                }
+                final String errorMsg = sb.toString();
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        cb.onRouteError(errorMsg);
+                    }
+                });
+                return;
+            }
+
+            ResponsePath path = rsp.getBest();
+            PointList pts = path.getPoints();
+            int count = pts.size();
+
+            if (count == 0) {
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        cb.onRouteError("no se encontró ruta");
+                    }
+                });
+                return;
+            }
+
+            // Copiar la polilínea a arrays primitivos
+            double[] lats = new double[count];
+            double[] lons = new double[count];
+            for (int i = 0; i < count; i++) {
+                lats[i] = pts.getLat(i);
+                lons[i] = pts.getLon(i);
+            }
+
+            final Route route = new Route(lats, lons, path.getDistance(), path.getTime());
+
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    cb.onRouteReady(route);
+                }
+            });
+
+        } catch (final Exception e) {
+            final String msg = e.getMessage() != null ? e.getMessage() : "Error desconocido en routing";
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    cb.onRouteError(msg);
+                }
+            });
+        }
+    }
+
     @MainThread
     public void startLoading(@NonNull final Context context,
                              @NonNull final RoutingListener listener) {
@@ -144,17 +217,14 @@ public final class RoutingManager {
             return;
         }
         if (state == STATE_LOADING) {
-            // Ya hay una carga en curso; el listener se notificará al terminar.
             return;
         }
         if (state == STATE_ERROR) {
-            // Permitimos reintentar después de un error.
             state = STATE_IDLE;
         }
 
         state = STATE_LOADING;
 
-        // applicationContext para no retener la Activity si el usuario navega.
         final Context appContext = context.getApplicationContext();
 
         new Thread(new Runnable() {
@@ -166,15 +236,13 @@ public final class RoutingManager {
     }
 
     // ------------------------------------------------------------------
-    // Lógica interna de carga (ejecutada en el hilo gh-loader)
+    // Lógica interna de carga
     // ------------------------------------------------------------------
-
     private void loadInBackground(@NonNull Context appContext,
                                   @NonNull final RoutingListener listener) {
         try {
             final File graphDir = new File(appContext.getFilesDir(), GRAPH_DIR_NAME);
 
-            // Extraer el ZIP si el directorio de grafo no existe todavía.
             if (!graphDir.exists() || !graphDir.isDirectory()) {
                 notifyProgress(listener, "Extrayendo grafo…");
                 extractAsset(appContext, graphDir);
@@ -183,20 +251,15 @@ public final class RoutingManager {
             notifyProgress(listener, "Cargando grafo…");
 
             GraphHopper gh = new GraphHopper();
-            // forMobile() desactiva CH y ajusta índices para baja RAM.
             gh.forMobile();
-            // MMAP: acceso al grafo sin cargarlo entero en el heap de la JVM.
             gh.setMemoryMapped();
-            // Solo lectura: no se necesita escribir en el dispositivo Android.
             gh.setAllowWrites(false);
-            // Perfil de coche, sin turn-costs para mantener el grafo ligero.
             gh.setProfiles(new Profile("car")
                     .setVehicle("car")
                     .setWeighting("fastest")
                     .setTurnCosts(false));
             gh.setEncodingManager(EncodingManager.create("car"));
 
-            // load(path) carga un grafo ya construido; no importa OSM.
             boolean loaded = gh.load(graphDir.getAbsolutePath());
             if (!loaded) {
                 throw new IOException("GraphHopper.load() devolvió false para: "
@@ -226,17 +289,12 @@ public final class RoutingManager {
         }
     }
 
-    /**
-     * Extrae el contenido del asset murcia-gh.zip en el directorio destino.
-     * Crea los subdirectorios necesarios y descarta entradas de directorio.
-     */
     private static void extractAsset(@NonNull Context context,
                                      @NonNull File destDir) throws IOException {
         if (!destDir.mkdirs() && !destDir.isDirectory()) {
             throw new IOException("No se pudo crear el directorio: " + destDir.getAbsolutePath());
         }
 
-        // Buffer reutilizable fuera del bucle para no crear objetos en cada iteración.
         final byte[] buffer = new byte[8192];
 
         InputStream assetStream = context.getAssets().open(ASSET_ZIP_NAME);
@@ -245,9 +303,6 @@ public final class RoutingManager {
             ZipEntry entry;
             while ((entry = zipIn.getNextEntry()) != null) {
                 String entryName = entry.getName();
-
-                // El ZIP incluye el directorio raíz "murcia-gh/"; lo ignoramos
-                // para que los archivos queden directamente dentro de destDir.
                 int slashIdx = entryName.indexOf('/');
                 if (slashIdx >= 0) {
                     entryName = entryName.substring(slashIdx + 1);
@@ -273,8 +328,6 @@ public final class RoutingManager {
             zipIn.close();
         }
     }
-
-    /** Escribe una entrada del ZIP en el fichero destino. */
     private static void writeEntry(@NonNull ZipInputStream zipIn,
                                    @NonNull File outFile,
                                    @NonNull byte[] buffer) throws IOException {

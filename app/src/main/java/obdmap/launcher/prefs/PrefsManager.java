@@ -91,28 +91,19 @@ public final class PrefsManager {
     }
 
     // ---------------------------------------------------------------------
-    // Destino de ruta (Fase 4, paso 4.3)
-    // Guardamos el float como int para evitar putFloat, que en algunas ROMs
-    // antiguas serializa con pérdida de bits. Float.floatToIntBits es exacto.
+    // Destino de ruta
     // ---------------------------------------------------------------------
     private static final String DEST_LAT_KEY = "dest_lat";
     private static final String DEST_LON_KEY = "dest_lon";
 
-    /**
-     * Devuelve la latitud del destino fijado por el usuario, o Float.NaN si no hay destino.
-     */
     public float getDestLat() {
         return Float.intBitsToFloat(prefs.getInt(DEST_LAT_KEY, Float.floatToIntBits(Float.NaN)));
     }
-
-    /**
-     * Devuelve la longitud del destino fijado por el usuario, o Float.NaN si no hay destino.
-     */
     public float getDestLon() {
         return Float.intBitsToFloat(prefs.getInt(DEST_LON_KEY, Float.floatToIntBits(Float.NaN)));
     }
 
-    /** Persiste las coordenadas del destino de ruta en una sola transacción a disco. */
+    /** Persiste las coordenadas del destino de ruta */
     public void setDestination(float lat, float lon) {
         prefs.edit()
                 .putInt(DEST_LAT_KEY, Float.floatToIntBits(lat))
@@ -120,7 +111,7 @@ public final class PrefsManager {
                 .apply();
     }
 
-    /** Elimina el destino de ruta guardado. */
+    /** Elimina el destino de ruta guardado */
     public void clearDestination() {
         prefs.edit()
                 .remove(DEST_LAT_KEY)
