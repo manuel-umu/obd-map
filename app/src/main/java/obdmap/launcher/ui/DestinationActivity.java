@@ -42,6 +42,29 @@ public final class DestinationActivity extends AppCompatActivity {
                 finish();
             }
         });
+
+        binding.btnClearDestination.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                prefsManager.clearDestination();
+                Toast.makeText(DestinationActivity.this,
+                        R.string.toast_destination_cleared, Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        });
+
+        // Si ya hay un destino guardado, lo mostramos en los campos al abrir.
+        prefillSavedDestination();
+    }
+
+    /** Rellena los campos con el destino guardado, si lo hay. */
+    private void prefillSavedDestination() {
+        float dLat = prefsManager.getDestLat();
+        float dLon = prefsManager.getDestLon();
+        if (!Float.isNaN(dLat) && !Float.isNaN(dLon)) {
+            binding.editLatitude.setText(String.valueOf(dLat));
+            binding.editLongitude.setText(String.valueOf(dLon));
+        }
     }
 
     /**

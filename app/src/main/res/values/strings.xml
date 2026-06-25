@@ -111,7 +111,9 @@
     <string name="hint_longitude">Longitud (ej: -1.1307)</string>
     <string name="btn_set_destination">Fijar destino</string>
     <string name="btn_cancel">Cancelar</string>
+    <string name="btn_clear_destination">Borrar destino</string>
     <string name="toast_destination_set">Destino fijado</string>
+    <string name="toast_destination_cleared">Destino borrado</string>
     <string name="toast_invalid_coordinates">Coordenadas no válidas</string>
     <!-- Botón en MainActivity para abrir la pantalla de destino. -->
     <string name="open_destination_button">Destino</string>

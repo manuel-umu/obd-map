@@ -34,6 +34,7 @@ import obdmap.launcher.map.PositionLayer;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.routing.RoadSnapper;
 import obdmap.launcher.routing.Route;
 import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
@@ -64,14 +65,17 @@ public final class MainActivity extends AppCompatActivity
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
 
-    // Última posición conocida (lat/lon por separado para evitar crear objetos en cada fix).
+    // Última posición conocida
     private double lastLat = Double.NaN;
     private double lastLon = Double.NaN;
+
+    // Buffer para el resultado del snap-to-road
+    private final double[] snapOut = new double[2];
 
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
 
-    // Última ruta calculada; null si aún no hay ruta. 4.5 la leerá para dibujarla.
+    // Última ruta calculada; null si aún no hay ruta
     @Nullable Route currentRoute;
 
     // Coordenadas del último destino para el que se disparó el cálculo.
@@ -146,7 +150,7 @@ public final class MainActivity extends AppCompatActivity
             }
         });
 
-        // Detectar pan manual del usuario sobre el MapView de VTM.
+        // Detectar movimiento manual en el mapa
         // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
         binding.mapView.setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -299,17 +303,42 @@ public final class MainActivity extends AppCompatActivity
     @Override
     public void onPositionUpdate(double latitude, double longitude,
                                  float bearingDegrees, boolean hasBearing, float speedMs) {
-        lastLat = latitude;
-        lastLon = longitude;
 
-        // Mover el marcador del coche en el mapa.
+        // Cascada de snap-to-road:
+        // 1) Si hay ruta activa, proyectar sobre su polilínea.
+        // 2) Si no (o el punto está lejos de la ruta), pegar a la red completa.
+        // 3) Si tampoco hay snap válido, usar el GPS crudo.
+        // El bearing y la velocidad SIEMPRE son los del GPS original.
+        double useLat = latitude;
+        double useLon = longitude;
+
+        if (currentRoute != null
+                && RoadSnapper.snapToRoute(currentRoute, latitude, longitude,
+                                           RoadSnapper.MAX_SNAP_METERS, snapOut)) {
+            useLat = snapOut[0];
+            useLon = snapOut[1];
+        } else {
+            RoutingManager rm = RoutingManager.getInstance();
+            if (rm.getState() == RoutingManager.STATE_READY
+                    && rm.getHopper() != null
+                    && RoadSnapper.snapToNetwork(rm.getHopper(), latitude, longitude,
+                                                RoadSnapper.MAX_SNAP_METERS, snapOut)) {
+                useLat = snapOut[0];
+                useLon = snapOut[1];
+            }
+        }
+
+        lastLat = useLat;
+        lastLon = useLon;
+
+        // Mover el marcador del coche en el mapa con la posición corregida.
         if (positionLayer != null) {
-            positionLayer.updatePosition(latitude, longitude);
+            positionLayer.updatePosition(useLat, useLon);
         }
 
         // Centrar y rotar el mapa si autoCenter está activo.
         if (mapManager != null) {
-            mapManager.updateCar(latitude, longitude, bearingDegrees,
+            mapManager.updateCar(useLat, useLon, bearingDegrees,
                     hasBearing, speedMs, autoCenter);
         }
 
@@ -519,16 +548,25 @@ public final class MainActivity extends AppCompatActivity
      * No recalcula si el destino no ha cambiado respecto al último cálculo.
      */
     private void maybeCalculateRoute() {
-        if (Double.isNaN(lastLat) || Double.isNaN(lastLon)) {
-            // Sin posición GPS todavía.
-            return;
-        }
-
         float destLat = prefsManager.getDestLat();
         float destLon = prefsManager.getDestLon();
 
         if (Float.isNaN(destLat) || Float.isNaN(destLon)) {
-            // No hay destino configurado.
+            // No hay destino (o se borró): si quedaba una ruta dibujada, la quitamos.
+            // No depende del GPS, por eso va antes del guard de posición.
+            if (currentRoute != null) {
+                currentRoute = null;
+                lastCalculatedDestLat = Float.NaN;
+                lastCalculatedDestLon = Float.NaN;
+                if (mapManager != null) {
+                    mapManager.clearRoute();
+                }
+            }
+            return;
+        }
+
+        if (Double.isNaN(lastLat) || Double.isNaN(lastLon)) {
+            // Hay destino pero aún no hay posición GPS: no podemos calcular todavía.
             return;
         }
 
