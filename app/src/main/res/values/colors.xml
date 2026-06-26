@@ -15,4 +15,10 @@
     <color name="text_unpaired">#FFFFCC02</color>
     <!-- Color de la etiqueta "Emparejado". -->
     <color name="text_paired">#FF66BB6A</color>
+
+    <!-- Paleta modo día -->
+    <color name="background_day">#FFF5F5F5</color>
+    <color name="surface_day">#FFFFFFFF</color>
+    <color name="text_primary_day">#FF212121</color>
+    <color name="text_secondary_day">#FF757575</color>
 </resources>

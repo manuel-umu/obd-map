@@ -42,13 +42,13 @@ import obdmap.launcher.R;
 public final class IndicatorView extends View {
 
     // Tamaño por defecto en dp; se convierte a píxeles en el constructor.
-    private static final int DEFAULT_WIDTH_DP  = 140;
-    private static final int DEFAULT_HEIGHT_DP = 90;
+    private static final int DEFAULT_WIDTH_DP  = 160;
+    private static final int DEFAULT_HEIGHT_DP = 110;
 
     // Tamaños de texto en sp; también se convierten en el constructor.
-    private static final int TEXT_SIZE_LABEL_SP = 11;
-    private static final int TEXT_SIZE_VALUE_SP = 28;
-    private static final int TEXT_SIZE_UNIT_SP  = 11;
+    private static final int TEXT_SIZE_LABEL_SP = 13;
+    private static final int TEXT_SIZE_VALUE_SP = 34;
+    private static final int TEXT_SIZE_UNIT_SP  = 13;
 
     // El valor de "sin dato" que muestra setNoData(). Declarado como constante
     // para compararlo barato en el dirty-check sin crear un String en cada tick.

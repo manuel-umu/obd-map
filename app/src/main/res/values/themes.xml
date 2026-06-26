@@ -13,4 +13,10 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:windowFullscreen">true</item>
     </style>
+
+    <style name="Theme.ObdMap.Day" parent="Theme.ObdMap">
+        <item name="android:windowBackground">@color/background_day</item>
+        <item name="android:textColorPrimary">@color/text_primary_day</item>
+        <item name="android:textColorSecondary">@color/text_secondary_day</item>
+    </style>
 </resources>

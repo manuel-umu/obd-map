@@ -29,11 +29,12 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:background="@color/primary_dark"
+            android:minHeight="64dp"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:text="@string/recenter_button"
             android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:textSize="16sp" />
 
         <TextView
             android:layout_width="0dp"
@@ -54,10 +55,10 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:background="@color/surface_dark"
-        android:padding="12dp"
+        android:padding="16dp"
         android:text="@string/settings_none_selected"
         android:textColor="@color/accent"
-        android:textSize="15sp" />
+        android:textSize="17sp" />
 
     <!-- Subtítulo de la lista. -->
     <TextView
@@ -68,7 +69,7 @@
         android:layout_marginBottom="4dp"
         android:text="@string/settings_section_devices"
         android:textColor="@color/text_secondary"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
 
     <!--
         ListView clásico: sin dependencia extra, mínimo overhead.
@@ -119,10 +120,10 @@
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:background="@color/primary"
-            android:minHeight="52dp"
+            android:minHeight="64dp"
             android:text="@string/settings_scan_button"
             android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:textSize="16sp" />
 
         <!-- Botón para abrir ajustes BT del sistema. -->
         <Button
@@ -131,10 +132,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@color/surface_dark"
-            android:minHeight="52dp"
+            android:minHeight="64dp"
             android:text="@string/settings_open_bt_settings"
             android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textSize="16sp" />
 
     </LinearLayout>
 
@@ -145,9 +146,9 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:background="@color/surface_dark"
-        android:minHeight="52dp"
+        android:minHeight="64dp"
         android:text="@string/settings_clear_button"
         android:textColor="@color/text_secondary"
-        android:textSize="15sp" />
+        android:textSize="17sp" />
 
 </LinearLayout>

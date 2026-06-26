@@ -39,6 +39,7 @@ import obdmap.launcher.routing.Route;
 import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
+import obdmap.launcher.util.DayNightMode;
 
 /**
  * Pantalla principal del launcher: el mapa.
@@ -83,6 +84,9 @@ public final class MainActivity extends AppCompatActivity
     private float lastCalculatedDestLat = Float.NaN;
     private float lastCalculatedDestLon = Float.NaN;
 
+    @DayNightMode.Mode
+    private int currentDayNightMode;
+
     private boolean autoCenter = true;
     private boolean serviceBound = false;
     private boolean hudRefreshPending = false;
@@ -109,6 +113,7 @@ public final class MainActivity extends AppCompatActivity
         setContentView(binding.getRoot());
 
         prefsManager = new PrefsManager(this);
+        currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
 
         binding.emergencyAccessButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -135,6 +140,13 @@ public final class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(MainActivity.this, DestinationActivity.class));
+            }
+        });
+
+        binding.dayNightToggleButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toggleDayNight();
             }
         });
 
@@ -165,6 +177,7 @@ public final class MainActivity extends AppCompatActivity
         });
 
         applyHudVisibility();
+        applyDayNightToUi();
 
         if (hasAllPermissions()) {
             initMapAndGps();
@@ -298,6 +311,7 @@ public final class MainActivity extends AppCompatActivity
         } catch (SecurityException ignored) {
             binding.statusText.setText(R.string.status_no_permissions);
         }
+        applyDayNightToUi();
     }
 
     @Override
@@ -345,6 +359,9 @@ public final class MainActivity extends AppCompatActivity
         binding.statusText.setText(R.string.status_gps_active);
         prefsManager.setLastPosition((float) latitude, (float) longitude);
 
+        // Actualizar el badge de velocidad con la lectura GPS más reciente.
+        binding.speedBadge.setSpeed(speedMs);
+
         // Intentar calcular la ruta si hay destino y el grafo está disponible.
         maybeCalculateRoute();
     }
@@ -352,6 +369,8 @@ public final class MainActivity extends AppCompatActivity
     @Override
     public void onProviderDisabled() {
         binding.statusText.setText(R.string.status_gps_lost);
+        // Sin proveedor GPS activo: el badge muestra "--".
+        binding.speedBadge.setNoData();
     }
 
     @Override
@@ -658,6 +677,29 @@ public final class MainActivity extends AppCompatActivity
                         binding.statusText.setText(getString(R.string.route_error, message));
                     }
                 });
+    }
+
+    private void toggleDayNight() {
+        currentDayNightMode = (currentDayNightMode == DayNightMode.NIGHT)
+                ? DayNightMode.DAY : DayNightMode.NIGHT;
+        prefsManager.setNightMode(currentDayNightMode == DayNightMode.NIGHT);
+        applyDayNightToUi();
+    }
+
+    private void applyDayNightToUi() {
+        boolean isNight = (currentDayNightMode == DayNightMode.NIGHT);
+        // El texto del botón muestra el modo al que se CAMBIARÁ al pulsarlo.
+        binding.dayNightToggleButton.setText(isNight
+                ? R.string.toggle_day_mode : R.string.toggle_night_mode);
+        // Fondo semitransparente del HUD: más oscuro de noche, gris claro de día.
+        binding.hudContainer.setBackgroundColor(
+                isNight ? 0xCC101418 : 0xCCF5F5F5);
+        // Tema del mapa VTM.
+        if (mapManager != null) {
+            mapManager.applyDayNightTheme(currentDayNightMode);
+        }
+        // Paleta de colores del badge de velocidad.
+        binding.speedBadge.applyNightMode(isNight);
     }
 
     private void openSystemSettings() {

@@ -11,6 +11,7 @@ import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.theme.internal.VtmThemes;
+import obdmap.launcher.util.DayNightMode;
 import org.oscim.tiling.source.mapfile.MapFileTileSource;
 import org.oscim.tiling.source.mapfile.MapInfo;
 import org.oscim.layers.tile.vector.VectorTileLayer;
@@ -254,6 +255,17 @@ public final class MapManager {
         }
         double t = (kmh - CITY_SPEED_KMH) / (HIGHWAY_SPEED_KMH - CITY_SPEED_KMH);
         return CITY_ZOOM + t * (HIGHWAY_ZOOM - CITY_ZOOM);
+    }
+
+    /**
+     * Cambia el tema del mapa entre día y noche.
+     */
+    public void applyDayNightTheme(@DayNightMode.Mode int mode) {
+        if (map == null) {
+            return;
+        }
+        map.setTheme(mode == DayNightMode.NIGHT ? VtmThemes.TRONRENDER : VtmThemes.DEFAULT);
+        map.updateMap(true);
     }
 
     /** Notifica a VTM que la Activity ha vuelto al frente (reanuda el renderer). */

@@ -31,6 +31,9 @@ public final class PrefsManager {
     // Ruta absoluta al archivo .map de Mapsforge seleccionado por el usuario.
     private static final String KEY_MAP_FILE_PATH = "map_file_path";
 
+    // Preferencia de modo noche (true = noche, false = día).
+    private static final String KEY_NIGHT_MODE = "night_mode";
+
     // ---------------------------------------------------------------------
     // Estado interno
     // ---------------------------------------------------------------------
@@ -117,5 +120,16 @@ public final class PrefsManager {
                 .remove(DEST_LAT_KEY)
                 .remove(DEST_LON_KEY)
                 .apply();
+    }
+
+    // ---------------------------------------------------------------------
+    // Modo día/noche
+    // ---------------------------------------------------------------------
+    public boolean isNightMode() {
+        return prefs.getBoolean(KEY_NIGHT_MODE, false);
+    }
+
+    public void setNightMode(boolean night) {
+        prefs.edit().putBoolean(KEY_NIGHT_MODE, night).apply();
     }
 }

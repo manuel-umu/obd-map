@@ -133,4 +133,8 @@
     <string name="hud_fuel_unit_lh">L/h</string>
     <!-- %1$.1f = consumo con 1 decimal (p. ej. "7.3") -->
     <string name="hud_fuel_value_format">%1$.1f</string>
+
+    <!-- Toggle modo día/noche en la pantalla principal. -->
+    <string name="toggle_night_mode">Noche</string>
+    <string name="toggle_day_mode">Día</string>
 </resources>
