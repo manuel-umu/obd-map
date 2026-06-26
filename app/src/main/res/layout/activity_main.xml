@@ -111,70 +111,61 @@
         android:textSize="18sp"
         android:visibility="gone" />
 
+    <!--
+        Botón "Destino" centrado en la parte inferior.
+        Es el único botón que queda en la barra inferior central tras eliminar
+        "Ajustes OBD" y "Debug OBD" (que ahora viven dentro de la pantalla de Ajustes).
+    -->
     <Button
-        android:id="@+id/emergencyAccessButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:background="@color/emergency_button"
-        android:minHeight="72dp"
-        android:paddingStart="28dp"
-        android:paddingEnd="28dp"
-        android:text="@string/emergency_access_button"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp" />
-
-    <!-- Contenedor inferior central: "Ajustes OBD" y "Debug OBD" en fila horizontal.
-         Usando LinearLayout para garantizar separación real en cualquier densidad/DPI.
-         Los márgenes sueltos en FrameLayout no funcionan como desplazamiento cuando
-         ambos botones comparten el mismo gravity, de ahí el solapamiento en hardware. -->
-    <LinearLayout
+        android:id="@+id/openDestinationButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="16dp"
-        android:orientation="horizontal">
+        android:background="@color/primary"
+        android:minHeight="72dp"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:text="@string/open_destination_button"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp" />
 
-        <!-- "Ajustes OBD" en azul primario para que destaque: es la acción
-             que el usuario necesita para emparejar el ELM327. -->
+    <!--
+        Columna inferior derecha: botón de Ajustes de la app (encima) y el botón de
+        emergencia hacia Ajustes del sistema (abajo). El LinearLayout los apila
+        verticalmente con gravity bottom|end.
+    -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:orientation="vertical">
+
+        <!-- Botón "Ajustes" de la app: engloba la selección de ELM327 y el acceso al Debug OBD. -->
         <Button
-            android:id="@+id/openSettingsButton"
+            android:id="@+id/appSettingsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="8dp"
             android:background="@color/primary"
             android:minHeight="72dp"
             android:paddingStart="28dp"
             android:paddingEnd="28dp"
-            android:text="@string/open_app_settings_button"
+            android:text="@string/app_settings_button"
             android:textColor="@color/text_primary"
             android:textSize="18sp" />
 
-        <!-- "Debug OBD" con fondo surface_dark, menos prominente que Ajustes. -->
+        <!-- Acceso de emergencia a los Ajustes del sistema. Siempre visible. -->
         <Button
-            android:id="@+id/openObdDebugButton"
+            android:id="@+id/emergencyAccessButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@color/surface_dark"
+            android:background="@color/emergency_button"
             android:minHeight="72dp"
             android:paddingStart="28dp"
             android:paddingEnd="28dp"
-            android:text="@string/open_obd_debug_button"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp" />
-
-        <!-- Botón para fijar el destino de ruta (Fase 4, paso 4.3). -->
-        <Button
-            android:id="@+id/openDestinationButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:background="@color/primary"
-            android:minHeight="72dp"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:text="@string/open_destination_button"
+            android:text="@string/emergency_access_button"
             android:textColor="@color/text_primary"
             android:textSize="18sp" />
 

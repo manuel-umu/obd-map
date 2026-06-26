@@ -7,8 +7,12 @@
     <string name="emergency_access_button">Ajustes del sistema</string>
     <string name="recenter_button">Recentrar</string>
 
-    <!-- Botón que abre la pantalla de Ajustes de la app. -->
+    <!-- Botón que abre la pantalla de Ajustes de la app (esquina inferior derecha). -->
     <string name="open_app_settings_button">Ajustes OBD</string>
+    <string name="app_settings_button">Ajustes</string>
+
+    <!-- Botón dentro de la pantalla de Ajustes para acceder al Debug OBD. -->
+    <string name="settings_open_obd_debug">Debug OBD</string>
 
     <!-- Pantalla de Ajustes — títulos y botones. -->
     <string name="settings_title">Ajustes — Adaptador OBD2</string>

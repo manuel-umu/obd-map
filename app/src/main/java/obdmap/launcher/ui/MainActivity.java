@@ -122,17 +122,10 @@ public final class MainActivity extends AppCompatActivity
             }
         });
 
-        binding.openSettingsButton.setOnClickListener(new View.OnClickListener() {
+        binding.appSettingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
-            }
-        });
-
-        binding.openObdDebugButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, ObdDebugActivity.class));
             }
         });
 

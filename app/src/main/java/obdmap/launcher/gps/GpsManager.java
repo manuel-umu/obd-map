@@ -9,11 +9,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 
 /**
- * Recibe la posición del GPS interno de la radio a 1 Hz, usando el
- * LocationManager de Android a pelo. Nada de Google Play Services: las
- * radios chinas no suelen traerlos y tampoco los necesitamos.
- *
- * Quien llame a start() debe haber comprobado antes el permiso de ubicación.
+ * Recibe la posición del GPS interno de la radio a 1 Hz
  */
 public final class GpsManager {
 
@@ -24,14 +20,16 @@ public final class GpsManager {
     private static final float MIN_DISTANCE_M = 0f;
 
     /**
-     * Callback de posición. Llega en el hilo principal, así que se pueden
-     * tocar vistas directamente.
+     * Umbral de precisión horizontal (metros).
      */
+    private static final float MAX_ACCURACY_FOR_SPEED_M = 25.0f;
+
+    /**
+     * Velocidad minima considerada real (m/s).
+     */
+    private static final float MIN_SPEED_MS = 1.0f;
+
     public interface PositionListener {
-        /**
-         * @param hasBearing si es false, el fix no trae rumbo fiable:
-         *                   bearingDegrees vale 0 y no sirve para rotar la flecha
-         */
         void onPositionUpdate(double latitude, double longitude,
                               float bearingDegrees, boolean hasBearing, float speedMs);
         void onProviderDisabled();
@@ -47,13 +45,21 @@ public final class GpsManager {
                 .getSystemService(Context.LOCATION_SERVICE);
         this.listener = listener;
 
-        // Listener interno único: se reutiliza durante toda la vida del manager.
-        // No es un hot path (1 Hz), así que la clase anónima no impacta.
         this.internalListener = new android.location.LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 float bearing = location.hasBearing() ? location.getBearing() : 0f;
-                float speed = location.hasSpeed() ? location.getSpeed() : 0f;
+
+                // Filtrado segun precision
+                float speed = 0f;
+                if (location.hasSpeed()) {
+                    boolean accuracyOk = !location.hasAccuracy()
+                            || location.getAccuracy() <= MAX_ACCURACY_FOR_SPEED_M;
+                    float raw = location.getSpeed();
+                    if (accuracyOk && raw >= MIN_SPEED_MS) {
+                        speed = raw;
+                    }
+                }
                 GpsManager.this.listener.onPositionUpdate(
                         location.getLatitude(),
                         location.getLongitude(),
