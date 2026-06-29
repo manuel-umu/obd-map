@@ -353,34 +353,62 @@ public final class MainActivity extends AppCompatActivity
         lastLat = useLat;
         lastLon = useLon;
 
-        // --- Fase B: predicción de posición (lead/lookahead) ---
-        // Proyectamos el objetivo visual hacia delante para que cuando la animación
-        // de ~750 ms termine, la flecha esté donde el coche realmente está.
-        // La predicción se aplica SOLO al render (marcador + viewport); la posición
-        // real (useLat/useLon) sigue siendo la que persiste y usa la lógica de ruta.
-        double predLat;
-        double predLon;
-        if (PositionPredictor.predict(useLat, useLon,
+        // Predicción de posición (lead/lookahead)
+        // Pipeline: snap con pos original -> predict -> snap otra vez con prediccion.
+        double renderLat;
+        double renderLon;
+        boolean hasPrediction = PositionPredictor.predict(useLat, useLon,
                 bearingDegrees, hasBearing, speedMs,
                 PositionPredictor.LOOKAHEAD_MS,
                 PositionPredictor.MAX_LEAD_METERS,
-                predictOut)) {
-            predLat = predictOut[0];
-            predLon = predictOut[1];
+                predictOut);
+
+        if (hasPrediction) {
+            // Re-snap del punto predicho: el punto adelantado puede haberse salido
+            // lateralmente de la vía si el bearing GPS tenía error angular.
+            boolean predSnapped = false;
+            if (currentRoute != null) {
+                // Con ruta activa: proyectar sobre la polilínea de la ruta.
+                predSnapped = RoadSnapper.snapToRoute(currentRoute,
+                        predictOut[0], predictOut[1],
+                        RoadSnapper.MAX_SNAP_METERS, snapOut);
+            }
+            if (!predSnapped) {
+                // Sin ruta
+                RoutingManager rmSnap = RoutingManager.getInstance();
+                if (rmSnap.getState() == RoutingManager.STATE_READY
+                        && rmSnap.getHopper() != null) {
+                    predSnapped = RoadSnapper.snapToNetwork(rmSnap.getHopper(),
+                            predictOut[0], predictOut[1],
+                            RoadSnapper.MAX_SNAP_METERS,
+                            bearingDegrees, hasBearing, snapOut);
+                }
+            }
+
+            if (predSnapped) {
+                // Punto predicho y pegado a la vía
+                renderLat = snapOut[0];
+                renderLon = snapOut[1];
+            } else {
+                // El predicho cayó fuera de toda vía (curva cerrada, intersección...):
+                // fallback a la posición real ya snapeada para no pintar fuera de la vía.
+                renderLat = useLat;
+                renderLon = useLon;
+            }
         } else {
             // Parado o sin bearing fiable: sin lead, la flecha converge al punto real.
-            predLat = useLat;
-            predLon = useLon;
+            renderLat = useLat;
+            renderLon = useLon;
         }
 
-        // Marcador y viewport reciben el MISMO objetivo predicho.
+        // Marcador y viewport reciben el MISMO objetivo de render.
         // En autoCenter el marcador lee el viewport (POSITION_EVENT), así que
         // es imprescindible que ambos apunten al mismo punto para no derivar.
         if (positionLayer != null) {
-            positionLayer.setTargetPosition(predLat, predLon);
+            positionLayer.setTargetPosition(renderLat, renderLon);
         }
         if (mapManager != null) {
-            mapManager.updateCar(predLat, predLon, bearingDegrees,
+            mapManager.updateCar(renderLat, renderLon, bearingDegrees,
                     hasBearing, speedMs, autoCenter);
         }
 
