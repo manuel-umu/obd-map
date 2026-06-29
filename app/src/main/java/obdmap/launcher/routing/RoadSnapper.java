@@ -5,8 +5,10 @@ import androidx.annotation.Nullable;
 
 import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.util.EdgeFilter;
+import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.QueryResult;
+import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.shapes.GHPoint3D;
 
 /**
@@ -14,8 +16,22 @@ import com.graphhopper.util.shapes.GHPoint3D;
  */
 public final class RoadSnapper {
 
-    /** Umbral máximo de snap en metros. */
-    public static final double MAX_SNAP_METERS = 35.0;
+    /**
+     * Umbral máximo de snap en metros. Subido de 35 a 55 para que el snap
+     * se aplique con más frecuencia cuando el GPS tiene deriva habitual en coche.
+     * Bajar si hay falsos snaps en zonas con vías muy próximas.
+     */
+    public static final double MAX_SNAP_METERS = 55.0;
+
+    /**
+     * Diferencia angular máxima entre el rumbo del GPS y el azimut de la arista
+     * para considerar que el vehículo circula por ella. Se evalúa en ambos
+     * sentidos de circulación (directa e inversa), por eso el umbral puede ser
+     * de 45° y aún así cubre el 100% de las orientaciones válidas con margen.
+     * Valor de 45° es un equilibrio entre tolerancia a GPS impreciso y rechazo
+     * de vías paralelas/perpendiculares.
+     */
+    private static final float MAX_HEADING_DIFF_DEG = 45.0f;
 
     /**
      * Metros por grado de latitud
@@ -113,7 +129,8 @@ public final class RoadSnapper {
     }
 
     /**
-     * Pega el punto (lat, lon) a la carretera más cercana
+     * Pega el punto (lat, lon) a la carretera más cercana, sin filtro de rumbo.
+     *
      * @param hopper    instancia de GraphHopper ya cargada
      * @param lat       latitud GPS cruda
      * @param lon       longitud GPS cruda
@@ -124,6 +141,15 @@ public final class RoadSnapper {
     public static boolean snapToNetwork(@Nullable GraphHopper hopper,
                                         double lat, double lon,
                                         double maxMeters,
+                                        @NonNull double[] out) {
+        return snapToNetwork(hopper, lat, lon, maxMeters, 0f, false, out);
+    }
+
+    public static boolean snapToNetwork(@Nullable GraphHopper hopper,
+                                        double lat, double lon,
+                                        double maxMeters,
+                                        float bearingDeg,
+                                        boolean hasBearing,
                                         @NonNull double[] out) {
         if (hopper == null) {
             return false;
@@ -143,6 +169,47 @@ public final class RoadSnapper {
         double distM = qr.getQueryDistance();
         if (distM > maxMeters) {
             return false;
+        }
+
+        // Filtro de rumbo: solo se aplica cuando el GPS entrega un bearing fiable.
+        if (hasBearing) {
+            EdgeIteratorState edge = qr.getClosestEdge();
+            if (edge != null) {
+                NodeAccess na = hopper.getGraphHopperStorage().getNodeAccess();
+                double baseLat = na.getLat(edge.getBaseNode());
+                double baseLon = na.getLon(edge.getBaseNode());
+                double adjLat  = na.getLat(edge.getAdjNode());
+                double adjLon  = na.getLon(edge.getAdjNode());
+
+                // Azimut geográfico de la arista (base -> adj), en grados [0, 360).
+                // atan2 con (dLon * cos(lat), dLat) da el azimut en coordenadas esféricas.
+                double cosLat   = Math.cos(Math.toRadians(lat));
+                double dLat     = adjLat - baseLat;
+                double dLon     = (adjLon - baseLon) * cosLat;
+                float  edgeAz   = (float) (Math.toDegrees(Math.atan2(dLon, dLat)));
+                if (edgeAz < 0f) {
+                    edgeAz += 360f;
+                }
+
+                // Diferencia angular normalizada al rango [0, 180].
+                // Una carretera tiene dos sentidos, así que comparamos también con el
+                // sentido inverso (edgeAz + 180) eligiendo la diferencia más pequeña.
+                float diff = Math.abs(bearingDeg - edgeAz);
+                if (diff > 180f) {
+                    diff = 360f - diff;
+                }
+                // diff ahora está en [0, 180]; si la arista va en sentido contrario
+                // la diferencia superará 90°. Normalizamos al rango [0, 90] para
+                // evaluar alineación en cualquier sentido:
+                if (diff > 90f) {
+                    diff = 180f - diff;
+                }
+
+                if (diff > MAX_HEADING_DIFF_DEG) {
+                    // La arista más cercana no está alineada con el rumbo: descartamos
+                    return false;
+                }
+            }
         }
 
         GHPoint3D snapped = qr.getSnappedPoint();

@@ -329,7 +329,8 @@ public final class MainActivity extends AppCompatActivity
             if (rm.getState() == RoutingManager.STATE_READY
                     && rm.getHopper() != null
                     && RoadSnapper.snapToNetwork(rm.getHopper(), latitude, longitude,
-                                                RoadSnapper.MAX_SNAP_METERS, snapOut)) {
+                                                RoadSnapper.MAX_SNAP_METERS,
+                                                bearingDegrees, hasBearing, snapOut)) {
                 useLat = snapOut[0];
                 useLon = snapOut[1];
             }
