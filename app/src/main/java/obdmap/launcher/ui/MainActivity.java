@@ -40,6 +40,7 @@ import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
 import obdmap.launcher.util.DayNightMode;
+import obdmap.launcher.util.PositionPredictor;
 
 /**
  * Pantalla principal del launcher: el mapa.
@@ -72,6 +73,9 @@ public final class MainActivity extends AppCompatActivity
 
     // Buffer para el resultado del snap-to-road
     private final double[] snapOut = new double[2];
+
+    // Buffer para el resultado de la predicción de posición
+    private final double[] predictOut = new double[2];
 
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
@@ -147,6 +151,11 @@ public final class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 autoCenter = true;
+                // Sincronizar el flag en PositionLayer para que vuelva al path
+                // de sincronización directa con el viewport (sin interpolación propia).
+                if (positionLayer != null) {
+                    positionLayer.setAutoCenter(true);
+                }
                 binding.recenterButton.setVisibility(View.GONE);
                 // Centramos inmediatamente si ya tenemos posición.
                 if (!Double.isNaN(lastLat) && mapManager != null) {
@@ -155,13 +164,17 @@ public final class MainActivity extends AppCompatActivity
             }
         });
 
-        // Detectar movimiento manual en el mapa
+        // Detectar movimiento manual en el mapa.
         // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
         binding.mapView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_MOVE && autoCenter) {
                     autoCenter = false;
+                    // Sincronizar en PositionLayer para que use interpolación propia.
+                    if (positionLayer != null) {
+                        positionLayer.setAutoCenter(false);
+                    }
                     binding.recenterButton.setVisibility(View.VISIBLE);
                 }
                 // Devolvemos false para que VTM siga procesando el gesto normalmente.
@@ -336,21 +349,44 @@ public final class MainActivity extends AppCompatActivity
             }
         }
 
+        // La posición real (snapeada) es la que persiste y alimenta la lógica de ruta.
         lastLat = useLat;
         lastLon = useLon;
 
-        // Mover el marcador del coche en el mapa con la posición corregida.
-        if (positionLayer != null) {
-            positionLayer.updatePosition(useLat, useLon);
+        // --- Fase B: predicción de posición (lead/lookahead) ---
+        // Proyectamos el objetivo visual hacia delante para que cuando la animación
+        // de ~750 ms termine, la flecha esté donde el coche realmente está.
+        // La predicción se aplica SOLO al render (marcador + viewport); la posición
+        // real (useLat/useLon) sigue siendo la que persiste y usa la lógica de ruta.
+        double predLat;
+        double predLon;
+        if (PositionPredictor.predict(useLat, useLon,
+                bearingDegrees, hasBearing, speedMs,
+                PositionPredictor.LOOKAHEAD_MS,
+                PositionPredictor.MAX_LEAD_METERS,
+                predictOut)) {
+            predLat = predictOut[0];
+            predLon = predictOut[1];
+        } else {
+            // Parado o sin bearing fiable: sin lead, la flecha converge al punto real.
+            predLat = useLat;
+            predLon = useLon;
         }
 
-        // Centrar y rotar el mapa si autoCenter está activo.
+        // Marcador y viewport reciben el MISMO objetivo predicho.
+        // En autoCenter el marcador lee el viewport (POSITION_EVENT), así que
+        // es imprescindible que ambos apunten al mismo punto para no derivar.
+        if (positionLayer != null) {
+            positionLayer.setTargetPosition(predLat, predLon);
+        }
         if (mapManager != null) {
-            mapManager.updateCar(useLat, useLon, bearingDegrees,
+            mapManager.updateCar(predLat, predLon, bearingDegrees,
                     hasBearing, speedMs, autoCenter);
         }
 
         binding.statusText.setText(R.string.status_gps_active);
+        // Se guarda la posición GPS CRUDA (no la predicha) para que al relanzar
+        // la app el mapa arranque desde donde el coche estaba realmente.
         prefsManager.setLastPosition((float) latitude, (float) longitude);
 
         // Actualizar el badge de velocidad con la lectura GPS más reciente.
@@ -472,6 +508,11 @@ public final class MainActivity extends AppCompatActivity
 
         if (mapDownloader != null && mapDownloader.isRunning()) {
             mapDownloader.cancel();
+        }
+        if (positionLayer != null) {
+            // Desregistrar el UpdateListener para que el mapa no retenga la Activity.
+            positionLayer.detach();
+            positionLayer = null;
         }
         if (mapManager != null) {
             mapManager.destroy();
