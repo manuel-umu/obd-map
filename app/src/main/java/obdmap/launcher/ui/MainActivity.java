@@ -96,6 +96,18 @@ public final class MainActivity extends AppCompatActivity
     private boolean hudRefreshPending = false;
     private long lastHudRefreshMs = 0L;
 
+    // --- Lead adaptativo en curvas ---
+    // Umbral inferior: por debajo de 5°/fix el adelanto es completo (recta).
+    private static final float TURN_FULL_LEAD_DEG = 5.0f;
+    // Umbral superior: por encima de 25°/fix el adelanto se anula (curva cerrada).
+    // En curva la velocidad es baja, así que perder el adelanto es imperceptible.
+    private static final float TURN_ZERO_LEAD_DEG = 25.0f;
+
+    // Rumbo del fix anterior para calcular la velocidad angular de giro (°/fix).
+    private float prevBearingDeg;
+    // false hasta recibir el primer fix con bearing válido.
+    private boolean hasPrevBearing = false;
+
     private final Handler hudHandler = new Handler(Looper.getMainLooper());
 
     private final Runnable hudRefreshRunnable = new Runnable() {
@@ -355,11 +367,44 @@ public final class MainActivity extends AppCompatActivity
 
         // Predicción de posición (lead/lookahead)
         // Pipeline: snap con pos original -> predict -> snap otra vez con prediccion.
+
+        float turnDeg = 0.0f;
+        if (hasBearing && hasPrevBearing) {
+            float diff = bearingDegrees - prevBearingDeg;
+            while (diff > 180.0f){
+                diff -= 360.0f;
+            }
+            while (diff < -180.0f){
+                diff += 360.0f;
+            }
+            if (diff < 0.0f){
+                diff = -diff;
+            }
+            turnDeg = diff;
+        }
+        float leadScale;
+        if (turnDeg <= TURN_FULL_LEAD_DEG) {
+            leadScale = 1.0f;
+        } else if (turnDeg >= TURN_ZERO_LEAD_DEG) {
+            leadScale = 0.0f;
+        } else {
+            leadScale = 1.0f - (turnDeg - TURN_FULL_LEAD_DEG)
+                    / (TURN_ZERO_LEAD_DEG - TURN_FULL_LEAD_DEG);
+        }
+
+        long effectiveLookaheadMs = (long) (PositionPredictor.LOOKAHEAD_MS * leadScale);
+
+        // Actualizar bearing previo solo cuando el GPS reporta bearing valido
+        if (hasBearing) {
+            prevBearingDeg = bearingDegrees;
+            hasPrevBearing = true;
+        }
+
         double renderLat;
         double renderLon;
         boolean hasPrediction = PositionPredictor.predict(useLat, useLon,
                 bearingDegrees, hasBearing, speedMs,
-                PositionPredictor.LOOKAHEAD_MS,
+                effectiveLookaheadMs,
                 PositionPredictor.MAX_LEAD_METERS,
                 predictOut);
 

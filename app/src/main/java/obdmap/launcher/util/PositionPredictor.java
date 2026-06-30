@@ -17,7 +17,7 @@ public final class PositionPredictor {
      * latencia típica del GPS (250 ms). Subir si la flecha sigue por detrás;
      * bajar si se adelanta demasiado en frenadas o curvas cerradas.
      */
-    public static final long LOOKAHEAD_MS = 600L;
+    public static final long LOOKAHEAD_MS = 800L;
 
     /**
      * Distancia máxima de adelanto en metros, por si el GPS envia algo raro
