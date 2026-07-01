@@ -15,6 +15,8 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
 import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.util.Instruction;
+import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 
@@ -189,7 +191,34 @@ public final class RoutingManager {
                 lons[i] = pts.getLon(i);
             }
 
-            final Route route = new Route(lats, lons, path.getDistance(), path.getTime());
+            // Extraer instrucciones de maniobra de GraphHopper
+            InstructionList instrList = path.getInstructions();
+            int instrCount = instrList.size();
+            int[] instrSigns = new int[instrCount];
+            String[] instrNames = new String[instrCount];
+            double[] instrDistances = new double[instrCount];
+            long[] instrTimes = new long[instrCount];
+            double[] instrLats = new double[instrCount];
+            double[] instrLons = new double[instrCount];
+            for (int i = 0; i < instrCount; i++) {
+                Instruction instr = instrList.get(i);
+                instrSigns[i] = instr.getSign();
+                instrNames[i] = instr.getName();
+                instrDistances[i] = instr.getDistance();
+                instrTimes[i] = instr.getTime();
+                PointList ipts = instr.getPoints();
+                if (ipts != null && ipts.size() > 0) {
+                    instrLats[i] = ipts.getLat(0);
+                    instrLons[i] = ipts.getLon(0);
+                } else {
+                    // Sin puntos propios: heredar coordenadas de la instrucción anterior
+                    instrLats[i] = (i > 0) ? instrLats[i - 1] : 0.0;
+                    instrLons[i] = (i > 0) ? instrLons[i - 1] : 0.0;
+                }
+            }
+
+            final Route route = new Route(lats, lons, path.getDistance(), path.getTime(),
+                    instrSigns, instrNames, instrDistances, instrTimes, instrLats, instrLons);
 
             mainHandler.post(new Runnable() {
                 @Override

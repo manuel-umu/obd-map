@@ -21,6 +21,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import java.io.File;
+import java.util.Calendar;
 import java.util.Locale;
 
 import obdmap.launcher.R;
@@ -35,12 +36,14 @@ import obdmap.launcher.map.PositionLayer;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.routing.NavigationTracker;
 import obdmap.launcher.routing.RoadSnapper;
 import obdmap.launcher.routing.Route;
 import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
 import obdmap.launcher.util.DayNightMode;
+import obdmap.launcher.util.ManeuverIcons;
 import obdmap.launcher.util.PositionPredictor;
 
 /**
@@ -96,6 +99,9 @@ public final class MainActivity extends AppCompatActivity
     // Última ruta calculada; null si aún no hay ruta
     @Nullable Route currentRoute;
 
+    // Rastrea la posición del usuario sobre la ruta para obtener instrucciones turn-by-turn.
+    private final NavigationTracker navigationTracker = new NavigationTracker();
+
     // Coordenadas del último destino para el que se disparó el cálculo.
     // Evita recalcular en cada fix GPS cuando el destino no ha cambiado.
     private float lastCalculatedDestLat = Float.NaN;
@@ -120,6 +126,13 @@ public final class MainActivity extends AppCompatActivity
     private float prevBearingDeg;
     // false hasta recibir el primer fix con bearing válido.
     private boolean hasPrevBearing = false;
+
+    // Dirty-check para el HUD de navegación: evita redibujar si los valores no cambiaron.
+    private int lastNavSign = Integer.MIN_VALUE;
+    private String lastNavStreet = null;
+    private String lastNavDistance = null;
+    private String lastNavRemaining = null;
+    private String lastNavEta = null;
 
     private final Handler hudHandler = new Handler(Looper.getMainLooper());
 
@@ -271,6 +284,7 @@ public final class MainActivity extends AppCompatActivity
             return;
         }
         if (!hasAllPermissions()) {
+            binding.statusText.setVisibility(View.VISIBLE);
             binding.statusText.setText(R.string.status_no_permissions);
             return;
         }
@@ -302,6 +316,7 @@ public final class MainActivity extends AppCompatActivity
         }
 
         mapDownloader = new MapDownloader();
+        binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText(getString(R.string.status_downloading_map, 0));
 
         mapDownloader.start(this, new MapDownloadListener() {
@@ -310,6 +325,7 @@ public final class MainActivity extends AppCompatActivity
                 if (binding == null) {
                     return;
                 }
+                binding.statusText.setVisibility(View.VISIBLE);
                 binding.statusText.setText(
                         getString(R.string.status_downloading_map, percent));
             }
@@ -328,6 +344,7 @@ public final class MainActivity extends AppCompatActivity
                 if (binding == null) {
                     return;
                 }
+                binding.statusText.setVisibility(View.VISIBLE);
                 binding.statusText.setText(
                         getString(R.string.status_download_failed, message));
             }
@@ -360,12 +377,14 @@ public final class MainActivity extends AppCompatActivity
                     }
                 });
 
+        binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText(getString(R.string.status_map_loaded, mapFile.getName()));
 
         gpsManager = new GpsManager(this, this);
         try {
             gpsManager.start();
         } catch (SecurityException ignored) {
+            binding.statusText.setVisibility(View.VISIBLE);
             binding.statusText.setText(R.string.status_no_permissions);
         }
         applyDayNightToUi();
@@ -496,7 +515,15 @@ public final class MainActivity extends AppCompatActivity
                     hasBearing, speedMs, autoCenter);
         }
 
-        binding.statusText.setText(R.string.status_gps_active);
+        // Actualizar el tracker de navegación y el HUD de maniobra
+        if (currentRoute != null) {
+            navigationTracker.update(useLat, useLon);
+            updateNavHud();
+        } else {
+            hideNavHud();
+        }
+
+        binding.statusText.setVisibility(View.GONE);
         // Se guarda la posición GPS CRUDA (no la predicha) para que al relanzar
         // la app el mapa arranque desde donde el coche estaba realmente.
         prefsManager.setLastPosition((float) latitude, (float) longitude);
@@ -510,6 +537,7 @@ public final class MainActivity extends AppCompatActivity
 
     @Override
     public void onProviderDisabled() {
+        binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText(R.string.status_gps_lost);
         // Sin proveedor GPS activo: el badge muestra "--".
         binding.speedBadge.setNoData();
@@ -596,6 +624,8 @@ public final class MainActivity extends AppCompatActivity
             lastCalculatedDestLat = Float.NaN;
             lastCalculatedDestLon = Float.NaN;
             currentRoute = null;
+            // El destino cambió mientras la app estaba en pausa: invalidar el tracker.
+            navigationTracker.setRoute(null);
         }
 
         // Si ya tenemos posición y hay destino, intentamos calcular ahora mismo.
@@ -724,11 +754,14 @@ public final class MainActivity extends AppCompatActivity
             // No depende del GPS, por eso va antes del guard de posición.
             if (currentRoute != null) {
                 currentRoute = null;
+                // Resetear el tracker al cancelar la ruta.
+                navigationTracker.setRoute(null);
                 lastCalculatedDestLat = Float.NaN;
                 lastCalculatedDestLon = Float.NaN;
                 if (mapManager != null) {
                     mapManager.clearRoute();
                 }
+                hideNavHud();
             }
             return;
         }
@@ -774,12 +807,14 @@ public final class MainActivity extends AppCompatActivity
                 if (binding == null) {
                     return;
                 }
+                binding.statusText.setVisibility(View.VISIBLE);
                 binding.statusText.setText(getString(R.string.route_error, message));
             }
 
             @Override
             public void onRoutingProgress(@NonNull String status) {
                 if (binding != null) {
+                    binding.statusText.setVisibility(View.VISIBLE);
                     binding.statusText.setText(status);
                 }
             }
@@ -802,6 +837,7 @@ public final class MainActivity extends AppCompatActivity
                             return;
                         }
                         currentRoute = route;
+                        navigationTracker.setRoute(currentRoute);
 
                         // Dibujar la polilínea de la ruta sobre el mapa VTM.
                         if (mapManager != null) {
@@ -812,6 +848,7 @@ public final class MainActivity extends AppCompatActivity
                         double km = route.distanceMeters / 1000.0;
                         long minutes = route.timeMs / 60000L;
 
+                        binding.statusText.setVisibility(View.VISIBLE);
                         binding.statusText.setText(getString(
                                 R.string.route_summary,
                                 String.format(Locale.US, "%.1f", km),
@@ -823,9 +860,136 @@ public final class MainActivity extends AppCompatActivity
                         if (binding == null) {
                             return;
                         }
+                        binding.statusText.setVisibility(View.VISIBLE);
                         binding.statusText.setText(getString(R.string.route_error, message));
                     }
                 });
+    }
+
+    /**
+     * Formatea una distancia en metros para mostrar en el HUD de navegación.
+     * Por debajo de 1 km: redondea a pasos de 10 m (o 50 m si supera 500 m).
+     * Por encima de 1 km: usa km con 1 decimal.
+     *
+     * @param meters distancia en metros
+     * @return cadena lista para mostrar (p. ej. "300 m", "1,2 km")
+     */
+    private String formatNavDistance(double meters) {
+        if (meters < 1000.0) {
+            int m = (int) meters;
+            int rounded;
+            if (m >= 500) {
+                // Redondear a 50 m para distancias medias
+                rounded = ((m + 25) / 50) * 50;
+            } else {
+                // Redondear a 10 m para distancias cortas
+                rounded = ((m + 5) / 10) * 10;
+            }
+            return getString(R.string.nav_distance_meters, rounded);
+        } else {
+            float km = (float) (meters / 1000.0);
+            return getString(R.string.nav_distance_km, km);
+        }
+    }
+
+    /**
+     * Actualiza el panel de maniobra y la barra de resumen con los datos actuales del tracker.
+     */
+    private void updateNavHud() {
+        if (binding == null) {
+            return;
+        }
+
+        // --- Panel de maniobra superior ---
+        boolean hasManuever = (navigationTracker.currentInstructionIndex >= 0
+                && navigationTracker.distanceToManeuverM >= 0);
+
+        if (!hasManuever) {
+            binding.navManeuverPanel.setVisibility(View.GONE);
+        } else {
+            binding.navManeuverPanel.setVisibility(View.VISIBLE);
+            int sign = navigationTracker.nextManeuverSign;
+            if (sign != lastNavSign) {
+                lastNavSign = sign;
+                binding.navManeuverIcon.setImageResource(ManeuverIcons.drawableForSign(sign));
+            }
+
+            String distStr = formatNavDistance(navigationTracker.distanceToManeuverM);
+            if (!distStr.equals(lastNavDistance)) {
+                lastNavDistance = distStr;
+                binding.navManeuverDistance.setText(distStr);
+            }
+
+            String street = navigationTracker.nextManeuverName;
+            if (street == null) {
+                street = "";
+            }
+            if (!street.equals(lastNavStreet)) {
+                lastNavStreet = street;
+                if (street.isEmpty()) {
+                    binding.navManeuverStreet.setVisibility(View.GONE);
+                } else {
+                    binding.navManeuverStreet.setVisibility(View.VISIBLE);
+                    binding.navManeuverStreet.setText(street);
+                }
+            }
+        }
+
+        // --- Barra inferior de resumen ---
+        double remaining = navigationTracker.distanceRemainingM;
+
+        if (remaining <= 0.0) {
+            binding.navSummaryBar.setVisibility(View.GONE);
+            return;
+        }
+
+        binding.navSummaryBar.setVisibility(View.VISIBLE);
+
+        String remStr = formatNavDistance(remaining);
+        if (!remStr.equals(lastNavRemaining)) {
+            lastNavRemaining = remStr;
+            binding.navRemainingDistance.setText(remStr);
+        }
+
+        // Hora actual + tiempo restante
+        long nowMs = System.currentTimeMillis();
+        long arrivalMs = nowMs + navigationTracker.timeRemainingMs;
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(arrivalMs);
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int minute = cal.get(Calendar.MINUTE);
+        long minutesRemaining = navigationTracker.timeRemainingMs / 60000L;
+
+        String etaStr;
+        if (minutesRemaining > 0) {
+            etaStr = getString(R.string.nav_time_remaining, (int) minutesRemaining)
+                    + " · "
+                    + getString(R.string.nav_eta,
+                            String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
+        } else {
+            etaStr = getString(R.string.nav_eta,
+                    String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
+        }
+        if (!etaStr.equals(lastNavEta)) {
+            lastNavEta = etaStr;
+            binding.navEta.setText(etaStr);
+        }
+    }
+
+    /**
+     * Oculta todos los paneles del HUD de navegación
+     */
+    private void hideNavHud() {
+        if (binding == null) {
+            return;
+        }
+        binding.navManeuverPanel.setVisibility(View.GONE);
+        binding.navSummaryBar.setVisibility(View.GONE);
+        lastNavSign = Integer.MIN_VALUE;
+        lastNavStreet = null;
+        lastNavDistance = null;
+        lastNavRemaining = null;
+        lastNavEta = null;
     }
 
     private void toggleDayNight() {
@@ -849,6 +1013,18 @@ public final class MainActivity extends AppCompatActivity
         }
         // Paleta de colores del badge de velocidad.
         binding.speedBadge.applyNightMode(isNight);
+        // HUD de navegación: fondo y colores adaptados al modo día/noche
+        int navBg = isNight ? 0xCC101418 : 0xCCF5F5F5;
+        int navTextPrimary = isNight ? 0xFFE6E6E6 : 0xFF212121;
+        int navTextSecondary = isNight ? 0xFFB0B0B0 : 0xFF757575;
+        int navIconTint = isNight ? 0xFFE6E6E6 : 0xFF212121;
+        binding.navManeuverPanel.setBackgroundColor(navBg);
+        binding.navManeuverDistance.setTextColor(navTextPrimary);
+        binding.navManeuverStreet.setTextColor(navTextSecondary);
+        binding.navManeuverIcon.setColorFilter(navIconTint);
+        binding.navSummaryBar.setBackgroundColor(navBg);
+        binding.navRemainingDistance.setTextColor(navTextPrimary);
+        binding.navEta.setTextColor(navTextPrimary);
     }
 
     private void openSystemSettings() {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Círculo de la rotonda (arco casi completo, sentido horario) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M10,21 A15,14 0 1,0 32,12" />
+    <!-- Salida hacia arriba-derecha -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M32,12 L40,8" />
+    <!-- Cabeza de flecha salida -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M34,8 L40,8 L38,14" />
+</vector>

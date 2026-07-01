@@ -21,6 +21,64 @@
         android:layout_height="match_parent" />
 
     <!--
+        Panel de navegación superior (HUD de maniobra).
+        Solo visible cuando hay ruta activa y próxima maniobra.
+        Diseñado para ser legible a distancia en el coche (fuente grande, iconos grandes).
+    -->
+    <LinearLayout
+        android:id="@+id/navManeuverPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:background="#CC101418"
+        android:gravity="center_vertical"
+        android:minHeight="80dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <!-- Icono de la maniobra -->
+        <ImageView
+            android:id="@+id/navManeuverIcon"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="12dp"
+            android:contentDescription="@string/nav_maneuver_icon_desc"
+            android:src="@drawable/ic_maneuver_straight"
+            android:tint="#FFFFFFFF" />
+
+        <!-- Distancia + nombre de calle en columna vertical -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/navManeuverDistance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFFFF"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/navManeuverStreet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#FFB0B0B0"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!--
         Columna de overlays superior izquierda: primero el HUD de consumo y
         luego el texto de estado del GPS/mapa. El LinearLayout vertical los
         apila sin que se solapen.
@@ -189,6 +247,52 @@
                 android:textSize="18sp" />
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <!--
+        Barra inferior de resumen de navegación: distancia restante + ETA.
+        Solo visible cuando hay ruta activa.
+        Se coloca centrada en la parte inferior, por encima del botón Destino.
+    -->
+    <LinearLayout
+        android:id="@+id/navSummaryBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="100dp"
+        android:background="#CC101418"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/navRemainingDistance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="·"
+            android:textColor="#FFB0B0B0"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/navEta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp" />
 
     </LinearLayout>
 
