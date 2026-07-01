@@ -1,8 +1,11 @@
 package obdmap.launcher.map;
 
+import android.content.res.AssetManager;
+
 import androidx.annotation.NonNull;
 
 import org.oscim.android.MapView;
+import org.oscim.android.theme.AssetsRenderTheme;
 import org.oscim.core.BoundingBox;
 import org.oscim.core.GeoPoint;
 import org.oscim.core.MapPosition;
@@ -10,7 +13,7 @@ import org.oscim.layers.PathLayer;
 import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
-import org.oscim.theme.internal.VtmThemes;
+import org.oscim.theme.IRenderTheme;
 import obdmap.launcher.util.DayNightMode;
 import org.oscim.tiling.source.mapfile.MapFileTileSource;
 import org.oscim.tiling.source.mapfile.MapInfo;
@@ -58,9 +61,17 @@ public final class MapManager {
     // Duración de la animación de posición/rumbo en milisegundos.
     private static final long ANIM_DURATION_MS = 750L;
 
+    // Nombre del archivo de tema de día dentro de assets/themes/
+    private static final String THEME_DAY   = "themes/driving_day.xml";
+    // Nombre del archivo de tema de noche dentro de assets/themes/
+    private static final String THEME_NIGHT = "themes/driving_night.xml";
+
     private MapView mapView;
     private Map map;
     private MapFileTileSource tileSource;
+
+    // AssetManager guardado en attachToView para reutilizarlo en applyDayNightTheme.
+    private AssetManager assetManager;
 
     // Capa de la polilínea de ruta. Vacía hasta que se calcula una ruta.
     private PathLayer routeLayer;
@@ -77,10 +88,16 @@ public final class MapManager {
     /**
      * Engancha el manager al MapView ya inflado, abre el .map y añade las capas.
      * El mapa arranca centrado en el bounding box del archivo.
+     *
+     * @param view        MapView ya inflado en el layout
+     * @param mapFilePath ruta al archivo .map de Mapsforge
+     * @param assets      AssetManager del contexto, para cargar el tema de conducción
      */
-    public void attachToView(@NonNull MapView view, @NonNull File mapFilePath) {
+    public void attachToView(@NonNull MapView view, @NonNull File mapFilePath,
+                             @NonNull AssetManager assets) {
         this.mapView = view;
         this.map = view.map();
+        this.assetManager = assets;
 
         // Bajar el punto del coche al tercio inferior (estilo navegador): así se
         // ve más carretera por delante. Es config de viewport, se hace una vez.
@@ -94,8 +111,9 @@ public final class MapManager {
         // Capa base vectorial: lee los tiles del .map y los renderiza via GLES
         VectorTileLayer baseLayer = map.setBaseMap(tileSource);
 
-        // Tema vectorial empaquetado en vtm-themes
-        map.setTheme(VtmThemes.DEFAULT);
+        // Tema de conducción (predeterminado= dia)
+        // TODO: Segun hora del dia, al iniciar poner dia o noche
+        applyThemeForMode(DayNightMode.DAY);
 
         // Extrusión 3D de edificios
         map.layers().add(new BuildingLayer(map, baseLayer));
@@ -264,8 +282,28 @@ public final class MapManager {
         if (map == null) {
             return;
         }
-        map.setTheme(mode == DayNightMode.NIGHT ? VtmThemes.TRONRENDER : VtmThemes.DEFAULT);
+        applyThemeForMode(mode);
         map.updateMap(true);
+    }
+
+    /**
+     * Carga el tema de conducción adecuado desde assets y lo aplica al mapa.
+     *
+     * @param mode DayNightMode.DAY o DayNightMode.NIGHT
+     */
+    private void applyThemeForMode(@DayNightMode.Mode int mode) {
+        if (assetManager == null || map == null) {
+            return;
+        }
+        String themeFile = (mode == DayNightMode.NIGHT) ? THEME_NIGHT : THEME_DAY;
+        try {
+            AssetsRenderTheme theme = new AssetsRenderTheme(assetManager, "", themeFile);
+            map.setTheme(theme);
+        } catch (IRenderTheme.ThemeException e) {
+            if (obdmap.launcher.BuildConfig.DEBUG) {
+                android.util.Log.e("MapManager", "Error cargando tema: " + themeFile, e);
+            }
+        }
     }
 
     /** Notifica a VTM que la Activity ha vuelto al frente (reanuda el renderer). */
@@ -293,5 +331,6 @@ public final class MapManager {
             tileSource = null;
         }
         map = null;
+        assetManager = null;
     }
 }

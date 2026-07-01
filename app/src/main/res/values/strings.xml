@@ -141,4 +141,19 @@
     <!-- Toggle modo día/noche en la pantalla principal. -->
     <string name="toggle_night_mode">Noche</string>
     <string name="toggle_day_mode">Día</string>
+
+    <!-- Panel de confirmación de destino por long-press (Fase 8). -->
+    <!-- Texto del panel cuando hay posición GPS y se puede calcular distancia en línea recta. -->
+    <!-- %1$.1f = distancia con 1 decimal, %2$s = unidad (m o km). -->
+    <string name="dest_confirm_distance">Destino a %1$.1f %2$s</string>
+    <!-- Texto del panel cuando aún no hay posición GPS y no se puede calcular. -->
+    <string name="dest_confirm_no_gps">Destino seleccionado</string>
+    <!-- Botón para confirmar y calcular la ruta. -->
+    <string name="dest_confirm_go">Ir</string>
+    <!-- Botón para cancelar la selección del pin provisional. -->
+    <string name="dest_confirm_cancel">Cancelar</string>
+    <!-- Unidad metros, para distancias cortas. -->
+    <string name="unit_meters">m</string>
+    <!-- Unidad kilómetros, para distancias largas. -->
+    <string name="unit_km">km</string>
 </resources>

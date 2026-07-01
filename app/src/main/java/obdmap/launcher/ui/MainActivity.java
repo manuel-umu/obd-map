@@ -26,6 +26,7 @@ import java.util.Locale;
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivityMainBinding;
 import obdmap.launcher.gps.GpsManager;
+import obdmap.launcher.map.DestinationPickerLayer;
 import obdmap.launcher.map.MapDownloadListener;
 import obdmap.launcher.map.MapDownloader;
 import obdmap.launcher.map.MapFileLocator;
@@ -66,6 +67,18 @@ public final class MainActivity extends AppCompatActivity
     @Nullable private MapManager mapManager;
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
+    @Nullable private DestinationPickerLayer destinationPickerLayer;
+
+    // Coordenadas del pin de destino provisional (long-press, aún no confirmado).
+    // Double.NaN cuando no hay pin activo.
+    private double pendingPickLat = Double.NaN;
+    private double pendingPickLon = Double.NaN;
+
+    // Factor de conversión: metros por grado a 45° de latitud (aproximación equirectangular).
+    private static final double METERS_PER_DEG = 111320.0;
+
+    // Umbral en metros por debajo del cual se muestra la distancia en metros en vez de km.
+    private static final double DIST_THRESHOLD_M = 1000.0;
 
     // Última posición conocida
     private double lastLat = Double.NaN;
@@ -149,6 +162,20 @@ public final class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(MainActivity.this, DestinationActivity.class));
+            }
+        });
+
+        binding.destConfirmGoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                confirmPickedDestination();
+            }
+        });
+
+        binding.destConfirmCancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                cancelPickedDestination();
             }
         });
 
@@ -314,12 +341,24 @@ public final class MainActivity extends AppCompatActivity
         prefsManager.setMapFilePath(mapFile.getAbsolutePath());
 
         mapManager = new MapManager();
-        mapManager.attachToView(binding.mapView, mapFile);
+        // Temas claro y oscuro
+        mapManager.attachToView(binding.mapView, mapFile, getAssets());
 
         // PositionLayer necesita el Map de VTM para añadirse a las capas.
         positionLayer = new PositionLayer(
                 binding.mapView.map(),
                 ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
+
+        // Capa de selección de destino por long-press. Se añade encima del resto
+        // para recibir el gesto antes que otras capas.
+        destinationPickerLayer = new DestinationPickerLayer(
+                binding.mapView.map(),
+                new DestinationPickerLayer.OnDestinationPickedListener() {
+                    @Override
+                    public void onDestinationPicked(double lat, double lon) {
+                        showDestinationConfirmPanel(lat, lon);
+                    }
+                });
 
         binding.statusText.setText(getString(R.string.status_map_loaded, mapFile.getName()));
 
@@ -587,6 +626,8 @@ public final class MainActivity extends AppCompatActivity
             positionLayer.detach();
             positionLayer = null;
         }
+        // La capa de picker no tiene recursos propios que liberar; basta con anular la referencia.
+        destinationPickerLayer = null;
         if (mapManager != null) {
             mapManager.destroy();
             mapManager = null;
@@ -814,5 +855,78 @@ public final class MainActivity extends AppCompatActivity
         Intent intent = new Intent(Settings.ACTION_SETTINGS);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
+    }
+
+    /**
+     * Muestra el panel de confirmación con la distancia en línea recta al punto tocado.
+     * La distancia se calcula con la aproximación equirectangular (suficientemente
+     * precisa para distancias de <200 km en España).
+     *
+     * @param lat latitud del punto elegido por long-press
+     * @param lon longitud del punto elegido por long-press
+     */
+    private void showDestinationConfirmPanel(double lat, double lon) {
+        if (binding == null) {
+            return;
+        }
+        pendingPickLat = lat;
+        pendingPickLon = lon;
+
+        // Calcular distancia en línea recta solo si hay posición GPS.
+        if (!Double.isNaN(lastLat) && !Double.isNaN(lastLon)) {
+            double dLat = lat - lastLat;
+            double dLon = lon - lastLon;
+            // cos(lat) en radianes para corregir la distorsión longitudinal.
+            double cosLat = Math.cos(Math.toRadians(lastLat));
+            double distM = METERS_PER_DEG * Math.sqrt(dLat * dLat + (dLon * dLon * cosLat * cosLat));
+
+            String distText;
+            if (distM < DIST_THRESHOLD_M) {
+                distText = getString(R.string.dest_confirm_distance, distM, getString(R.string.unit_meters));
+            } else {
+                distText = getString(R.string.dest_confirm_distance, distM / 1000.0, getString(R.string.unit_km));
+            }
+            binding.destConfirmText.setText(distText);
+        } else {
+            binding.destConfirmText.setText(R.string.dest_confirm_no_gps);
+        }
+
+        binding.destConfirmPanel.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Confirma el pin provisional: persiste el destino y lanza el cálculo de ruta.
+     */
+    private void confirmPickedDestination() {
+        if (binding == null || Double.isNaN(pendingPickLat) || Double.isNaN(pendingPickLon)) {
+            return;
+        }
+        // Reutiliza exactamente el mismo setter que usa DestinationActivity.
+        prefsManager.setDestination((float) pendingPickLat, (float) pendingPickLon);
+
+        // Resetear el cache para forzar el recálculo con el nuevo destino.
+        lastCalculatedDestLat = Float.NaN;
+        lastCalculatedDestLon = Float.NaN;
+
+        binding.destConfirmPanel.setVisibility(View.GONE);
+
+        // Lanzar el cálculo reutilizando el pipeline completo.
+        maybeCalculateRoute();
+    }
+
+    /**
+     * Cancela la selección provisional: oculta el pin y el panel sin tocar el destino guardado.
+     */
+    private void cancelPickedDestination() {
+        if (binding == null) {
+            return;
+        }
+        pendingPickLat = Double.NaN;
+        pendingPickLon = Double.NaN;
+
+        if (destinationPickerLayer != null) {
+            destinationPickerLayer.hidePin();
+        }
+        binding.destConfirmPanel.setVisibility(View.GONE);
     }
 }
