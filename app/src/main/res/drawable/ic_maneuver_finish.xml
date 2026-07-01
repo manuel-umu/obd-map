@@ -4,16 +4,28 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Mástil vertical -->
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M14,10 L14,40" />
-    <!-- Bandera triangular rellena (destino alcanzado) -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,42 L24,42" />
+
     <path
-        android:fillColor="#FFFFFFFF"
+        android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1"
-        android:pathData="M14,10 L36,18 L14,26 Z" />
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M18,42 L18,8" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M18,10 C26,4 34,16 42,10 L42,24 C34,30 26,18 18,24 Z" />
 </vector>

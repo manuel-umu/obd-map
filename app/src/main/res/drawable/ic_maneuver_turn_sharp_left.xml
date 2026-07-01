@@ -4,16 +4,20 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Giro cerrado a la izquierda -->
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M30,38 L30,28 Q30,18 18,24 L18,38" />
-    <!-- Cabeza de flecha -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M33,38 L33,20 Q33,6 21,18 L15,24" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M26,30 L18,24 L24,32" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M15,14 L15,24 L25,24" />
 </vector>

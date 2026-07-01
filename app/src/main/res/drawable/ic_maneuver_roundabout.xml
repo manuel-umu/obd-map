@@ -4,22 +4,26 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Círculo de la rotonda (arco casi completo, sentido horario) -->
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#A0FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M24,14 A10,10 0 1,0 24,34 A10,10 0 1,0 24,14 Z" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M10,21 A15,14 0 1,0 32,12" />
-    <!-- Salida hacia arriba-derecha -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M24,42 L24,34 A10,10 0 0,0 31,17 L38,10" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M32,12 L40,8" />
-    <!-- Cabeza de flecha salida -->
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="3"
-        android:pathData="M34,8 L40,8 L38,14" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M28,10 L38,10 L38,20" />
 </vector>

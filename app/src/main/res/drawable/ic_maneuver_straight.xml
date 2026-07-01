@@ -4,16 +4,20 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Eje vertical -->
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
         android:pathData="M24,38 L24,10" />
-    <!-- Cabeza de flecha -->
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
         android:pathData="M14,20 L24,10 L34,20" />
 </vector>

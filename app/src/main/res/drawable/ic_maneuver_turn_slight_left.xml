@@ -4,16 +4,20 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Trazo levemente a la izquierda -->
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M28,38 L28,26 L16,12" />
-    <!-- Cabeza de flecha -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M30,42 L30,28 Q30,20 22,12 L18,8" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M25,16 L16,12 L20,21" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M28,8 L18,8 L18,18" />
 </vector>

@@ -4,22 +4,28 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <!-- Base común hacia arriba -->
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#A0FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M24,26 Q24,18 32,10" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M24,38 L24,24" />
-    <!-- Rama izquierda (la resaltada) -->
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M24,42 L24,26 Q24,18 16,10" />
+
     <path
         android:fillColor="@android:color/transparent"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="3"
-        android:pathData="M24,24 L14,10" />
-    <!-- Cabeza de flecha rama izquierda -->
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="3"
-        android:pathData="M23,20 L14,10 L18,21" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M26,10 L16,10 L16,20" />
 </vector>
