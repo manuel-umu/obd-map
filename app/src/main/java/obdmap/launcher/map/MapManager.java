@@ -300,9 +300,7 @@ public final class MapManager {
             AssetsRenderTheme theme = new AssetsRenderTheme(assetManager, "", themeFile);
             map.setTheme(theme);
         } catch (IRenderTheme.ThemeException e) {
-            if (obdmap.launcher.BuildConfig.DEBUG) {
-                android.util.Log.e("MapManager", "Error cargando tema: " + themeFile, e);
-            }
+            // Tema inválido: se ignora y el mapa mantiene el tema anterior (o ninguno).
         }
     }
 

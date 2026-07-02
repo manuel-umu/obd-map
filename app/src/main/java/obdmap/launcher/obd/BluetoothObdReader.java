@@ -3,12 +3,9 @@ package obdmap.launcher.obd;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import obdmap.launcher.BuildConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,8 +25,6 @@ import java.util.concurrent.ArrayBlockingQueue;
  * el hilo de UI. Quien actualice vistas debe postear al main thread.
  */
 public final class BluetoothObdReader {
-
-    private static final String TAG = "BluetoothObdReader";
 
     /** UUID estándar del perfil serie Bluetooth (SPP). */
     private static final UUID SPP_UUID =
@@ -288,10 +283,6 @@ public final class BluetoothObdReader {
             socket = newSocket;
             inputStream = newSocket.getInputStream();
             outputStream = newSocket.getOutputStream();
-
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Socket conectado a " + mac);
-            }
             return true;
 
         } catch (IOException e) {
@@ -299,9 +290,6 @@ public final class BluetoothObdReader {
             socket = null;
             inputStream = null;
             outputStream = null;
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Fallo al conectar socket: " + e.getMessage());
-            }
             return false;
         }
     }
@@ -332,9 +320,6 @@ public final class BluetoothObdReader {
         if (!sendAndExpect("ATSP0\r", "OK")) {
             notifyError("", "ATSP0: sin respuesta OK");
             return false;
-        }
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Handshake AT completado");
         }
         return true;
     }
@@ -410,9 +395,6 @@ public final class BluetoothObdReader {
             return readUntilPrompt(in);
 
         } catch (IOException e) {
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Error de I/O al enviar '" + command.trim() + "': " + e.getMessage());
-            }
             return null;
         }
     }
@@ -464,9 +446,6 @@ public final class BluetoothObdReader {
         }
 
         // Timeout.
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Timeout leyendo respuesta ELM327");
-        }
         return null;
     }
 
@@ -591,10 +570,6 @@ public final class BluetoothObdReader {
         // Duplicamos para la próxima vez, con tope en BACKOFF_MAX_MS.
         currentBackoffMs = Math.min(currentBackoffMs * 2, BACKOFF_MAX_MS);
 
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Backoff: esperando " + delay + " ms antes de reconectar");
-        }
-
         try {
             Thread.sleep(delay);
             return true;
@@ -617,9 +592,6 @@ public final class BluetoothObdReader {
     }
 
     private void notifyError(@NonNull String pid, @NonNull String description) {
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "ObdError pid='" + pid + "' desc=" + description);
-        }
         listener.onObdError(pid, description);
     }
 

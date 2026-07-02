@@ -128,6 +128,32 @@
     <!-- Error genérico de routing mostrado en statusText. %1$s = mensaje de error. -->
     <string name="route_error">Error de ruta: %1$s</string>
 
+    <!-- Aviso de voz TTS al confirmar el cálculo de una ruta (paso 5.4). -->
+    <string name="voice_route_started">Ruta iniciada</string>
+
+    <!-- Avisos de voz por proximidad a la maniobra (paso 5.5). -->
+    <!-- Plantilla para avisos a 500 m y 200 m. %1$d = metros, %2$s = texto de la maniobra. -->
+    <string name="voice_in_meters">En %1$d metros, %2$s</string>
+    <!-- Plantilla para el aviso inminente a 50 m. %1$s = texto de la maniobra. -->
+    <string name="voice_now">Ahora, %1$s</string>
+    <!-- Se añade tras el texto de la maniobra cuando hay nombre de calle. %1$s = calle. -->
+    <string name="voice_on_street">en %1$s</string>
+
+    <!-- Textos de maniobra en español, indexados por el sign de GraphHopper. -->
+    <string name="maneuver_turn_sharp_left">gire bruscamente a la izquierda</string>
+    <string name="maneuver_turn_left">gire a la izquierda</string>
+    <string name="maneuver_turn_slight_left">gírese ligeramente a la izquierda</string>
+    <string name="maneuver_turn_slight_right">gírese ligeramente a la derecha</string>
+    <string name="maneuver_turn_right">gire a la derecha</string>
+    <string name="maneuver_turn_sharp_right">gire bruscamente a la derecha</string>
+    <string name="maneuver_finish">ha llegado a su destino</string>
+    <string name="maneuver_roundabout">tome la rotonda</string>
+    <string name="maneuver_keep_left">manténgase a la izquierda</string>
+    <string name="maneuver_keep_right">manténgase a la derecha</string>
+    <string name="maneuver_uturn">haga un cambio de sentido</string>
+    <string name="maneuver_continue">continúe recto</string>
+    <string name="maneuver_generic">continúe</string>
+
     <!-- HUD de consumo en la pantalla principal (paso 3.5). -->
     <!-- Etiqueta del indicador de consumo instantáneo. -->
     <string name="hud_fuel_label">Consumo</string>

@@ -1,6 +1,7 @@
 package obdmap.launcher.ui;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -45,6 +46,8 @@ import obdmap.launcher.service.ObdServiceListener;
 import obdmap.launcher.util.DayNightMode;
 import obdmap.launcher.util.ManeuverIcons;
 import obdmap.launcher.util.PositionPredictor;
+import obdmap.launcher.voice.NavVoiceAnnouncer;
+import obdmap.launcher.voice.TtsManager;
 
 /**
  * Pantalla principal del launcher: el mapa.
@@ -71,6 +74,8 @@ public final class MainActivity extends AppCompatActivity
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
     @Nullable private DestinationPickerLayer destinationPickerLayer;
+    @Nullable private TtsManager ttsManager;
+    @Nullable private NavVoiceAnnouncer navVoiceAnnouncer;
 
     // Coordenadas del pin de destino provisional (long-press, aún no confirmado).
     // Double.NaN cuando no hay pin activo.
@@ -148,6 +153,7 @@ public final class MainActivity extends AppCompatActivity
         }
     };
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -156,6 +162,8 @@ public final class MainActivity extends AppCompatActivity
 
         prefsManager = new PrefsManager(this);
         currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
+        ttsManager = new TtsManager(this);
+        navVoiceAnnouncer = new NavVoiceAnnouncer(this, ttsManager);
 
         binding.emergencyAccessButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -519,6 +527,13 @@ public final class MainActivity extends AppCompatActivity
         if (currentRoute != null) {
             navigationTracker.update(useLat, useLon);
             updateNavHud();
+            if (navVoiceAnnouncer != null) {
+                navVoiceAnnouncer.onNavUpdate(
+                        navigationTracker.currentInstructionIndex,
+                        navigationTracker.nextManeuverSign,
+                        navigationTracker.nextManeuverName,
+                        navigationTracker.distanceToManeuverM);
+            }
         } else {
             hideNavHud();
         }
@@ -626,6 +641,9 @@ public final class MainActivity extends AppCompatActivity
             currentRoute = null;
             // El destino cambió mientras la app estaba en pausa: invalidar el tracker.
             navigationTracker.setRoute(null);
+            if (navVoiceAnnouncer != null) {
+                navVoiceAnnouncer.reset();
+            }
         }
 
         // Si ya tenemos posición y hay destino, intentamos calcular ahora mismo.
@@ -662,6 +680,11 @@ public final class MainActivity extends AppCompatActivity
             mapManager.destroy();
             mapManager = null;
         }
+        if (ttsManager != null) {
+            ttsManager.shutdown();
+            ttsManager = null;
+        }
+        navVoiceAnnouncer = null;
         binding = null;
         super.onDestroy();
     }
@@ -756,6 +779,9 @@ public final class MainActivity extends AppCompatActivity
                 currentRoute = null;
                 // Resetear el tracker al cancelar la ruta.
                 navigationTracker.setRoute(null);
+                if (navVoiceAnnouncer != null) {
+                    navVoiceAnnouncer.reset();
+                }
                 lastCalculatedDestLat = Float.NaN;
                 lastCalculatedDestLon = Float.NaN;
                 if (mapManager != null) {
@@ -853,6 +879,10 @@ public final class MainActivity extends AppCompatActivity
                                 R.string.route_summary,
                                 String.format(Locale.US, "%.1f", km),
                                 String.valueOf(minutes)));
+
+                        if (ttsManager != null) {
+                            ttsManager.speak(getString(R.string.voice_route_started));
+                        }
                     }
 
                     @Override
