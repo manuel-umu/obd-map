@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Carga de credenciales de firma de release desde un fichero fuera del control de versiones
+// (ver .gitignore). Si no existe (p. ej. en un checkout limpio de otro desarrollador),
+// el build de release simplemente queda sin firmar en vez de fallar.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def hasReleaseKeystore = keystorePropertiesFile.exists()
+def keystoreProperties = new Properties()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     compileSdkVersion 28
     // No fijamos buildToolsVersion: AGP elige automáticamente la versión
@@ -33,6 +43,26 @@ android {
         viewBinding true
     }
 
+    // lintVitalRelease aborta el build de release con "targetSdk < 31 (Google Play)".
+    // Este proyecto targetea SDK 28 a propósito (radio china, no Play Store), así que
+    // desactivamos SOLO esa comprobación; el resto de lint sigue activo.
+    lint {
+        disable 'ExpiredTargetSdkVersion'
+    }
+
+    // Firma de release condicionada a la presencia de keystore.properties;
+    // así el proyecto sigue compilando (sin firmar) en checkouts sin credenciales.
+    if (hasReleaseKeystore) {
+        signingConfigs {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     compileOptions {
         // Java 8 — necesario para algunas APIs y suficiente para evitar el peso de Java 11+.
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -58,6 +88,9 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

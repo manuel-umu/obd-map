@@ -43,6 +43,7 @@ import obdmap.launcher.routing.Route;
 import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
+import obdmap.launcher.update.UpdateManager;
 import obdmap.launcher.util.DayNightMode;
 import obdmap.launcher.util.ManeuverIcons;
 import obdmap.launcher.util.PositionPredictor;
@@ -69,6 +70,9 @@ public final class MainActivity extends AppCompatActivity
 
     private ActivityMainBinding binding;
     private PrefsManager prefsManager;
+
+    // Auto actualización OTA
+    private final UpdateManager updateManager = new UpdateManager();
 
     @Nullable private MapManager mapManager;
     @Nullable private GpsManager gpsManager;
@@ -630,6 +634,9 @@ public final class MainActivity extends AppCompatActivity
             }
         }
         maybeStartObdService();
+
+        // Comprobación de actualización OTA
+        updateManager.checkOnStartup(this);
 
         // Al volver a primer plano: si el destino cambió mientras estábamos en pausa,
         // resetear para que se recalcule en el próximo fix GPS.

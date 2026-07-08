@@ -28,6 +28,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
+        Auto-actualización OTA (Fase 10): permite lanzar la instalación del APK
+        descargado. Obligatorio desde API 26 para instalar desde la propia app.
+        El usuario debe conceder además "instalar apps de origen desconocido"
+        a este launcher (ajuste del sistema, una vez).
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
         Iconos por defecto del sistema en Fase 0. Se generarán los mipmap propios
         más adelante (Android Studio → New → Image Asset) y se reañadirán los
         atributos android:icon y android:roundIcon.
@@ -91,6 +99,22 @@
             android:name=".ui.DestinationActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
+
+        <!--
+            FileProvider para el auto-updater OTA (Fase 10): expone el APK descargado
+            al instalador del sistema con un content:// URI. Obligatorio en API 24+
+            (un file:// lanzaría FileUriExposedException). La authority usa
+            ${applicationId} para no colisionar con otras apps.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

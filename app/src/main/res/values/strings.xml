@@ -194,4 +194,17 @@
     <string name="nav_eta">Llegada: %1$s</string>
     <!-- Tiempo restante en minutos. %1$d = minutos. Usado junto a ETA. -->
     <string name="nav_time_remaining">%1$d min</string>
+
+    <!-- Auto-actualización OTA (Fase 10). -->
+    <string name="update_available_title">Actualización disponible</string>
+    <!-- %1$s = nombre de versión, %2$s = tamaño (p. ej. "14,3 MB"; vacío si no se sabe). -->
+    <string name="update_available_message">Hay una versión nueva: %1$s %2$s.\n¿Descargar e instalar ahora?</string>
+    <string name="update_button_install">Instalar</string>
+    <string name="update_button_later">Después</string>
+    <string name="update_downloading_title">Descargando actualización…</string>
+    <!-- %1$s = descripción breve del error. -->
+    <string name="update_download_failed">No se pudo descargar la actualización: %1$s</string>
+    <string name="update_unknown_sources_title">Permiso necesario</string>
+    <string name="update_unknown_sources_message">Para instalar la actualización, activa «instalar apps de origen desconocido» para OBD-Map y vuelve a intentarlo.</string>
+    <string name="update_button_open_settings">Abrir ajustes</string>
 </resources>

@@ -132,4 +132,18 @@ public final class PrefsManager {
     public void setNightMode(boolean night) {
         prefs.edit().putBoolean(KEY_NIGHT_MODE, night).apply();
     }
+
+    // ---------------------------------------------------------------------
+    // Auto actualización OTA
+    // ---------------------------------------------------------------------
+    private static final String KEY_LAST_UPDATE_CHECK = "last_update_check";
+
+    /** Epoch ms de la última comprobación de actualización, o 0 si nunca. */
+    public long getLastUpdateCheck() {
+        return prefs.getLong(KEY_LAST_UPDATE_CHECK, 0L);
+    }
+
+    public void setLastUpdateCheck(long epochMs) {
+        prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, epochMs).apply();
+    }
 }

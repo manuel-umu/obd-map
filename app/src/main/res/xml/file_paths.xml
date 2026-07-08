@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Rutas expuestas por el FileProvider (Fase 10, auto-updater OTA).
+    Solo se comparte el subdirectorio "apk" del almacenamiento externo propio de
+    la app: getExternalFilesDir("apk"). No requiere permiso de almacenamiento en
+    API 24+ y queda aislado del resto de ficheros de la app.
+-->
+<paths>
+    <external-files-path name="apk" path="apk/" />
+</paths>
