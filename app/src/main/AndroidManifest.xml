@@ -28,6 +28,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
+        Necesario para ConnectivityManager.getActiveNetworkInfo() (el updater OTA
+        comprueba si hay red antes de consultar GitHub). Sin este permiso, esa
+        llamada lanza SecurityException y la app crashea al arrancar. Es un permiso
+        "normal" (no runtime), sin diálogo al usuario.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
         Auto-actualización OTA (Fase 10): permite lanzar la instalación del APK
         descargado. Obligatorio desde API 26 para instalar desde la propia app.
         El usuario debe conceder además "instalar apps de origen desconocido"
