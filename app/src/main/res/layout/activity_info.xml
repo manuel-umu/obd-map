@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Pantalla de Información (dentro de Ajustes, Fase 10).
+    Muestra la versión instalada y permite comprobar/instalar actualizaciones OTA.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:orientation="vertical">
+
+    <!-- Barra de título con botón atrás. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/btn_surface"
+            android:minHeight="56dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/back_button"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/info_title"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Versión instalada. -->
+    <TextView
+        android:id="@+id/infoVersionText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="@color/surface_dark"
+        android:padding="16dp"
+        android:textColor="@color/accent"
+        android:textSize="17sp"
+        android:text="@string/info_title" />
+
+    <!-- Resultado de la comprobación (oculto hasta pulsar el botón). -->
+    <TextView
+        android:id="@+id/infoResultText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Empuja los botones hacia abajo. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Botón "Comprobar última versión". -->
+    <Button
+        android:id="@+id/infoCheckButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/btn_primary"
+        android:minHeight="64dp"
+        android:text="@string/info_check_button"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp" />
+
+    <!-- Botón "Instalar" — solo visible si hay versión nueva. -->
+    <Button
+        android:id="@+id/infoInstallButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/btn_accent"
+        android:minHeight="64dp"
+        android:text="@string/update_button_install"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+</LinearLayout>

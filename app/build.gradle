@@ -19,8 +19,12 @@ android {
         applicationId "obdmap.launcher"
         minSdkVersion 24       // Android 7.0 — radios chinas modernas
         targetSdkVersion 28    // Evita permisos runtime de API 29+ y bloat AndroidX nuevo
-        versionCode 1
-        versionName "0.1.0-fase0"
+        // versionName: esquema 0.<hito>.<commit> — el dígito medio sube al terminar
+        // algo grande (una fase); el último, en cada commit. versionCode: entero
+        // monotónico independiente, +1 por release; es el que compara el updater OTA
+        // y el que va en el tag de GitHub.
+        versionCode 2
+        versionName "0.1.1"
 
         // GraphHopper core supera el límite de 64K métodos en un solo dex;
         // multidex es obligatorio a partir de esta dependencia.

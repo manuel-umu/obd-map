@@ -14,6 +14,11 @@
     <!-- Botón dentro de la pantalla de Ajustes para acceder al Debug OBD. -->
     <string name="settings_open_obd_debug">Debug OBD</string>
 
+    <!-- Menú de Ajustes: navegación entre secciones. -->
+    <string name="back_button">Volver</string>
+    <string name="settings_open_bluetooth">Ajustes Bluetooth OBD</string>
+    <string name="settings_open_system">Ajustes del sistema</string>
+
     <!-- Pantalla de Ajustes — títulos y botones. -->
     <string name="settings_title">Ajustes — Adaptador OBD2</string>
     <string name="settings_section_paired">Dispositivos Bluetooth emparejados</string>
@@ -50,7 +55,7 @@
     <!-- %1$s = descripción breve del error. -->
     <string name="status_download_failed">No se pudo descargar el mapa: %1$s</string>
 
-    <!-- Botón de acceso a la pantalla de debug OBD2 (Bloque C). -->
+    <!-- Botón de acceso a la pantalla de debug OBD2 -->
     <string name="open_obd_debug_button">Debug OBD</string>
 
     <!-- Estados del ObdService — usados en la notificación y en la pantalla de debug. -->
@@ -67,7 +72,7 @@
     <!-- Estado en la pantalla de debug cuando no hay adaptador configurado. -->
     <string name="obd_state_no_mac">Sin adaptador OBD — selecciónalo en Ajustes</string>
 
-    <!-- Pantalla de debug OBD2 (Bloque C, ítem 2.7). -->
+    <!-- Pantalla de debug OBD2  -->
     <string name="debug_title">Debug OBD2</string>
     <string name="debug_back_button">Atrás</string>
     <string name="debug_rpm_label">RPM:</string>
@@ -82,7 +87,7 @@
     <!-- Valor mostrado cuando el dato no ha llegado todavía. -->
     <string name="debug_no_data">—</string>
 
-    <!-- Pantalla de debug OBD2 — Fase 3: telemetría de consumo diésel. -->
+    <!-- Pantalla de debug OBD2: telemetría de consumo diésel. -->
     <string name="debug_throttle_label">Acelerador:</string>
     <string name="debug_throttle_unit">%</string>
     <string name="debug_coolant_label">Refrig.:</string>
@@ -109,7 +114,7 @@
     <!-- %1$.1f = valor float con 1 decimal -->
     <string name="debug_float_format">%1$.1f</string>
 
-    <!-- Pantalla de destino (Fase 4, paso 4.3). -->
+    <!-- Pantalla de destino -->
     <string name="title_destination">Fijar destino</string>
     <string name="hint_latitude">Latitud (ej: 37.9922)</string>
     <string name="hint_longitude">Longitud (ej: -1.1307)</string>
@@ -122,16 +127,16 @@
     <!-- Botón en MainActivity para abrir la pantalla de destino. -->
     <string name="open_destination_button">Destino</string>
 
-    <!-- Ruta calculada (paso 4.4). -->
+    <!-- Ruta calculada -->
     <!-- %1$s = distancia en km (p. ej. "12.3"), %2$s = tiempo en minutos (p. ej. "18"). -->
     <string name="route_summary">Ruta: %1$s km · %2$s min</string>
     <!-- Error genérico de routing mostrado en statusText. %1$s = mensaje de error. -->
     <string name="route_error">Error de ruta: %1$s</string>
 
-    <!-- Aviso de voz TTS al confirmar el cálculo de una ruta (paso 5.4). -->
+    <!-- Aviso de voz TTS al confirmar el cálculo de una ruta -->
     <string name="voice_route_started">Ruta iniciada</string>
 
-    <!-- Avisos de voz por proximidad a la maniobra (paso 5.5). -->
+    <!-- Avisos de voz por proximidad a la maniobra -->
     <!-- Plantilla para avisos a 500 m y 200 m. %1$d = metros, %2$s = texto de la maniobra. -->
     <string name="voice_in_meters">En %1$d metros, %2$s</string>
     <!-- Plantilla para el aviso inminente a 50 m. %1$s = texto de la maniobra. -->
@@ -154,7 +159,7 @@
     <string name="maneuver_continue">continúe recto</string>
     <string name="maneuver_generic">continúe</string>
 
-    <!-- HUD de consumo en la pantalla principal (paso 3.5). -->
+    <!-- HUD de consumo en la pantalla principal -->
     <!-- Etiqueta del indicador de consumo instantáneo. -->
     <string name="hud_fuel_label">Consumo</string>
     <!-- Unidad cuando el coche supera el umbral de velocidad (L/100km). -->
@@ -168,7 +173,7 @@
     <string name="toggle_night_mode">Noche</string>
     <string name="toggle_day_mode">Día</string>
 
-    <!-- Panel de confirmación de destino por long-press (Fase 8). -->
+    <!-- Panel de confirmación de destino por long-press -->
     <!-- Texto del panel cuando hay posición GPS y se puede calcular distancia en línea recta. -->
     <!-- %1$.1f = distancia con 1 decimal, %2$s = unidad (m o km). -->
     <string name="dest_confirm_distance">Destino a %1$.1f %2$s</string>
@@ -195,7 +200,7 @@
     <!-- Tiempo restante en minutos. %1$d = minutos. Usado junto a ETA. -->
     <string name="nav_time_remaining">%1$d min</string>
 
-    <!-- Auto-actualización OTA (Fase 10). -->
+    <!-- Auto-actualización OTA -->
     <string name="update_available_title">Actualización disponible</string>
     <!-- %1$s = nombre de versión, %2$s = tamaño (p. ej. "14,3 MB"; vacío si no se sabe). -->
     <string name="update_available_message">Hay una versión nueva: %1$s %2$s.\n¿Descargar e instalar ahora?</string>
@@ -207,4 +212,17 @@
     <string name="update_unknown_sources_title">Permiso necesario</string>
     <string name="update_unknown_sources_message">Para instalar la actualización, activa «instalar apps de origen desconocido» para OBD-Map y vuelve a intentarlo.</string>
     <string name="update_button_open_settings">Abrir ajustes</string>
+
+    <!-- Pantalla de Información -->
+    <string name="settings_open_info">Información de la aplicación</string>
+    <string name="info_title">Información del sistema</string>
+    <!-- %1$s = versionName (p. ej. "0.1.1"), %2$d = versionCode. -->
+    <string name="info_version_installed">Versión instalada: %1$s (build %2$d)</string>
+    <string name="info_check_button">Comprobar última versión</string>
+    <string name="info_checking">Comprobando…</string>
+    <string name="info_up_to_date">Estás en la última versión</string>
+    <!-- %1$s = nombre de la versión disponible. -->
+    <string name="info_update_available">Nueva versión disponible: %1$s</string>
+    <!-- %1$s = descripción breve del error. -->
+    <string name="info_check_failed">No se pudo comprobar: %1$s</string>
 </resources>

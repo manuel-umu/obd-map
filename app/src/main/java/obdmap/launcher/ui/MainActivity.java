@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -168,13 +167,6 @@ public final class MainActivity extends AppCompatActivity
         currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
         ttsManager = new TtsManager(this);
         navVoiceAnnouncer = new NavVoiceAnnouncer(this, ttsManager);
-
-        binding.emergencyAccessButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                openSystemSettings();
-            }
-        });
 
         binding.appSettingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1062,12 +1054,6 @@ public final class MainActivity extends AppCompatActivity
         binding.navSummaryBar.setBackgroundColor(navBg);
         binding.navRemainingDistance.setTextColor(navTextPrimary);
         binding.navEta.setTextColor(navTextPrimary);
-    }
-
-    private void openSystemSettings() {
-        Intent intent = new Intent(Settings.ACTION_SETTINGS);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
     }
 
     /**

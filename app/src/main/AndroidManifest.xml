@@ -79,15 +79,27 @@
             </intent-filter>
         </activity>
 
-        <!-- Pantalla de Ajustes de la app (Bloque A, Fase 2). -->
+        <!-- Pantalla de Ajustes de la app (menú de nivel superior). -->
         <activity
             android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Sub-pantalla de selección/emparejado del adaptador OBD por Bluetooth. -->
+        <activity
+            android:name=".ui.ObdBluetoothActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
         <!-- Pantalla de debug OBD2 en bruto (Bloque C, Fase 2). -->
         <activity
             android:name=".ui.ObdDebugActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Pantalla de Información / versión + actualización OTA (Fase 10). -->
+        <activity
+            android:name=".ui.InfoActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 

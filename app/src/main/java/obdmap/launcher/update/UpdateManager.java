@@ -17,15 +17,11 @@ import java.io.File;
 import java.util.Locale;
 
 import obdmap.launcher.R;
-import obdmap.launcher.prefs.PrefsManager;
 
 /**
  * Controlador de la auto-actualización OTA
  */
 public final class UpdateManager {
-
-    /** Intervalo mínimo entre comprobaciones: 1 vez al día. */
-    private static final long CHECK_INTERVAL_MS = 24L * 60L * 60L * 1000L;
 
     private static final long BYTES_PER_MB = 1024L * 1024L;
 
@@ -37,18 +33,10 @@ public final class UpdateManager {
      * Comprueba si hay actualización
      */
     public void checkOnStartup(@NonNull final Activity activity) {
-        PrefsManager prefs = new PrefsManager(activity);
-
-        long now = System.currentTimeMillis();
-        long last = prefs.getLastUpdateCheck();
-        // El valor absoluto tolera un reloj que retrocede (cambio de hora, etc.).
-        if (last != 0L && Math.abs(now - last) < CHECK_INTERVAL_MS) {
-            return;
-        }
+        // Comprobación en cada apertura (sin throttle). Si no hay red, se omite en silencio.
         if (!isNetworkAvailable(activity)) {
             return;
         }
-        prefs.setLastUpdateCheck(now);
 
         new UpdateChecker().check(new UpdateChecker.CheckListener() {
             @Override
@@ -83,12 +71,17 @@ public final class UpdateManager {
                 .setMessage(message)
                 .setCancelable(true)
                 .setPositiveButton(R.string.update_button_install,
-                        (dialog, which) -> startDownload(activity, info))
+                        (dialog, which) -> downloadAndInstall(activity, info))
                 .setNegativeButton(R.string.update_button_later, null)
                 .show();
     }
 
-    private void startDownload(@NonNull final Activity activity, @NonNull UpdateInfo info) {
+    /**
+     * Descarga el APK de {@code info} (con diálogo de progreso) y, al terminar,
+     * lanza su instalación. Público para reutilizarlo desde la pantalla de
+     * Información (comprobación manual), además del flujo automático de arranque.
+     */
+    public void downloadAndInstall(@NonNull final Activity activity, @NonNull UpdateInfo info) {
         showProgressDialog(activity);
 
         new UpdateDownloader().download(activity, info, new UpdateDownloader.DownloadListener() {

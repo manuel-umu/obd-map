@@ -297,44 +297,21 @@
     </LinearLayout>
 
     <!--
-        Columna inferior derecha: botón de Ajustes de la app (encima) y el botón de
-        emergencia hacia Ajustes del sistema (abajo). El LinearLayout los apila
-        verticalmente con gravity bottom|end.
+        Botón "Ajustes" de la app (esquina inferior derecha). Desde él se accede
+        a la selección del ELM327, ajustes del sistema, debug e información.
     -->
-    <LinearLayout
+    <Button
+        android:id="@+id/appSettingsButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:orientation="vertical">
-
-        <!-- Botón "Ajustes" de la app: engloba la selección de ELM327 y el acceso al Debug OBD. -->
-        <Button
-            android:id="@+id/appSettingsButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:background="@color/primary"
-            android:minHeight="72dp"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:text="@string/app_settings_button"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp" />
-
-        <!-- Acceso de emergencia a los Ajustes del sistema. Siempre visible. -->
-        <Button
-            android:id="@+id/emergencyAccessButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@color/emergency_button"
-            android:minHeight="72dp"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:text="@string/emergency_access_button"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp" />
-
-    </LinearLayout>
+        android:background="@drawable/btn_primary"
+        android:minHeight="72dp"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:text="@string/app_settings_button"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp" />
 
 </FrameLayout>
