@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Pantalla de debug OBD2 — Fase 3.
+    Pantalla de debug con la telemetría OBD2 en bruto.
     Muestra telemetría básica (RPM, velocidad, carga) y los nuevos datos
     de consumo diésel (acelerador, temperaturas, MAP, fuel rate, consumo instantáneo/medio).
 -->

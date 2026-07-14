@@ -189,7 +189,7 @@
         android:textSize="18sp" />
 
     <!--
-        Panel de confirmación de destino por long-press (Fase 8).
+        Panel de confirmación de destino por long-press.
         Aparece centrado en la parte inferior cuando el usuario hace long-press
         sobre el mapa. Por defecto GONE; se hace VISIBLE desde MainActivity.
         El minHeight grande garantiza zona táctil cómoda en el coche.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Pantalla de Información (dentro de Ajustes, Fase 10).
+    Pantalla de Información (accesible desde Ajustes).
     Muestra la versión instalada y permite comprobar/instalar actualizaciones OTA.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

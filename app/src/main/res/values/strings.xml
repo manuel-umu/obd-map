@@ -188,7 +188,7 @@
     <!-- Unidad kilómetros, para distancias largas. -->
     <string name="unit_km">km</string>
 
-    <!-- HUD de navegación (Fase 5.3). -->
+    <!-- HUD de navegación. -->
     <!-- Descripción de accesibilidad del icono de maniobra. -->
     <string name="nav_maneuver_icon_desc">Icono de maniobra</string>
     <!-- Formato de distancia corta en metros (pasos de 10 o 50). %1$d = metros redondeados. -->

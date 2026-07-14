@@ -6,6 +6,8 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 
+import obdmap.launcher.util.IoUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -78,12 +80,7 @@ public final class MapDownloader {
         running   = true;
         cancelled = false;
 
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                download(ctx, listener);
-            }
-        }, "map-download");
+        Thread thread = new Thread(() -> download(ctx, listener), "map-download");
         // Daemon: si la app muere inesperadamente, el hilo no bloquea la JVM.
         thread.setDaemon(true);
         thread.start();
@@ -158,7 +155,7 @@ public final class MapDownloader {
 
             // Aseguramos que todo llegó a disco antes de renombrar.
             outputStream.flush();
-            closeQuietly(outputStream);
+            IoUtils.closeQuietly(outputStream);
             outputStream = null;
 
             // Renombrado atómico: el .map queda disponible de golpe o no existe.
@@ -172,8 +169,8 @@ public final class MapDownloader {
         } catch (IOException ex) {
             postError(listener, ex.getMessage() != null ? ex.getMessage() : "Error de red");
         } finally {
-            closeQuietly(inputStream);
-            closeQuietly(outputStream);
+            IoUtils.closeQuietly(inputStream);
+            IoUtils.closeQuietly(outputStream);
             if (connection != null) {
                 connection.disconnect();
             }
@@ -190,45 +187,14 @@ public final class MapDownloader {
     // -------------------------------------------------------------------------
 
     private void postProgress(final MapDownloadListener listener, final int percent) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onProgress(percent);
-            }
-        });
+        mainHandler.post(() -> listener.onProgress(percent));
     }
 
     private void postComplete(final MapDownloadListener listener, final File file) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onComplete(file);
-            }
-        });
+        mainHandler.post(() -> listener.onComplete(file));
     }
 
     private void postError(final MapDownloadListener listener, final String message) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onError(message);
-            }
-        });
-    }
-
-    // -------------------------------------------------------------------------
-    // Utilidades
-    // -------------------------------------------------------------------------
-
-    /** Cierra un stream ignorando excepciones. Patrón habitual del proyecto. */
-    private static void closeQuietly(java.io.Closeable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (IOException ignored) {
-            // No hay acción de recuperación posible al cerrar.
-        }
+        mainHandler.post(() -> listener.onError(message));
     }
 }

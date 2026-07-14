@@ -28,8 +28,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public final class ObdService extends Service implements ObdListener {
 
-    private static final String TAG = "ObdService";
-
     /** Cada cuánto se piden los PIDs rápidos: 200 ms = 5 Hz. */
     private static final long POLL_INTERVAL_MS = 200L;
 
@@ -290,12 +288,9 @@ public final class ObdService extends Service implements ObdListener {
             notifications.update(state);
         }
 
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                for (ObdServiceListener listener : serviceListeners) {
-                    listener.onObdStateChanged(state);
-                }
+        mainHandler.post(() -> {
+            for (ObdServiceListener listener : serviceListeners) {
+                listener.onObdStateChanged(state);
             }
         });
     }
@@ -305,12 +300,9 @@ public final class ObdService extends Service implements ObdListener {
         storeValue(pid, rawValue);
         lastReadingTimestampMs = System.currentTimeMillis();
 
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                for (ObdServiceListener listener : serviceListeners) {
-                    listener.onObdDataUpdated(pid, rawValue);
-                }
+        mainHandler.post(() -> {
+            for (ObdServiceListener listener : serviceListeners) {
+                listener.onObdDataUpdated(pid, rawValue);
             }
         });
     }
@@ -324,12 +316,9 @@ public final class ObdService extends Service implements ObdListener {
     }
 
     private void postSnapshot() {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                for (ObdServiceListener listener : serviceListeners) {
-                    listener.onObdSnapshot();
-                }
+        mainHandler.post(() -> {
+            for (ObdServiceListener listener : serviceListeners) {
+                listener.onObdSnapshot();
             }
         });
     }
@@ -339,29 +328,42 @@ public final class ObdService extends Service implements ObdListener {
     // =========================================================================
 
     private void storeValue(@NonNull String pid, int rawValue) {
-        if (ObdPids.RPM.equals(pid)) {
-            lastRpm = rawValue;
-        } else if (ObdPids.SPEED.equals(pid)) {
-            lastSpeed = rawValue;
-            fuelCalculator.onSpeedUpdated(rawValue);
-        } else if (ObdPids.LOAD.equals(pid)) {
-            lastLoad = rawValue;
-        } else if (ObdPids.MAF.equals(pid)) {
-            fuelCalculator.onMafUpdated(rawValue);
-        } else if (ObdPids.FUEL_RATE.equals(pid)) {
-            lastFuelRateRaw = rawValue;
-            fuelCalculator.onFuelRateUpdated(rawValue);
-        } else if (ObdPids.THROTTLE.equals(pid)) {
-            lastThrottle = rawValue;
-            // Último PID rápido del ciclo: registrar UNA muestra por ciclo (~5 Hz).
-            // Así el ring buffer de 1600 entradas cubre ~320 s ≈ la ventana de 5 min.
-            fuelCalculator.addSample(System.currentTimeMillis());
-        } else if (ObdPids.COOLANT.equals(pid)) {
-            lastCoolant = rawValue;
-        } else if (ObdPids.IAT.equals(pid)) {
-            lastIat = rawValue;
-        } else if (ObdPids.MAP.equals(pid)) {
-            lastMapKpa = rawValue;
+        switch (pid) {
+            case ObdPids.RPM:
+                lastRpm = rawValue;
+                break;
+            case ObdPids.SPEED:
+                lastSpeed = rawValue;
+                fuelCalculator.onSpeedUpdated(rawValue);
+                break;
+            case ObdPids.LOAD:
+                lastLoad = rawValue;
+                break;
+            case ObdPids.MAF:
+                fuelCalculator.onMafUpdated(rawValue);
+                break;
+            case ObdPids.FUEL_RATE:
+                lastFuelRateRaw = rawValue;
+                fuelCalculator.onFuelRateUpdated(rawValue);
+                break;
+            case ObdPids.THROTTLE:
+                lastThrottle = rawValue;
+                // Último PID rápido del ciclo: registrar UNA muestra por ciclo (~5 Hz).
+                // Así el ring buffer de 1600 entradas cubre ~320 s ≈ la ventana de 5 min.
+                fuelCalculator.addSample(System.currentTimeMillis());
+                break;
+            case ObdPids.COOLANT:
+                lastCoolant = rawValue;
+                break;
+            case ObdPids.IAT:
+                lastIat = rawValue;
+                break;
+            case ObdPids.MAP:
+                lastMapKpa = rawValue;
+                break;
+            default:
+                // PID no rastreado: nada que almacenar.
+                break;
         }
     }
 

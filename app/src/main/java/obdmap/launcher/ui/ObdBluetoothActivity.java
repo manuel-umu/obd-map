@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -51,57 +50,26 @@ public final class ObdBluetoothActivity extends AppCompatActivity {
         listAdapter = new BtDevicesAdapter(this, allDevices);
         binding.pairedDevicesList.setAdapter(listAdapter);
 
-        binding.backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
+        binding.backButton.setOnClickListener(v -> finish());
+
+        binding.clearSelectionButton.setOnClickListener(v -> {
+            prefsManager.clearObdMac();
+            currentMac = null;
+            listAdapter.setSelectedMac(null);
+            refreshSelectedLabel();
+            listAdapter.notifyDataSetChanged();
         });
 
-        binding.clearSelectionButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                prefsManager.clearObdMac();
-                currentMac = null;
-                listAdapter.setSelectedMac(null);
-                refreshSelectedLabel();
-                listAdapter.notifyDataSetChanged();
-            }
-        });
+        binding.openBtSettingsButton.setOnClickListener(v -> openBluetoothSettings());
 
-        binding.openBtSettingsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
-                } catch (ActivityNotFoundException e) {
-                    try {
-                        startActivity(new Intent(Settings.ACTION_SETTINGS));
-                    } catch (ActivityNotFoundException e2) {
-                        Toast.makeText(ObdBluetoothActivity.this,
-                                R.string.settings_no_bt_settings_app,
-                                Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
-        });
+        binding.scanButton.setOnClickListener(v -> startScan());
 
-        binding.scanButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startScan();
-            }
-        });
-
-        binding.pairedDevicesList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                BluetoothDevice device = allDevices.get(position);
-                if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
-                    selectDevice(device);
-                } else {
-                    pairDevice(device);
-                }
+        binding.pairedDevicesList.setOnItemClickListener((parent, view, position, id) -> {
+            BluetoothDevice device = allDevices.get(position);
+            if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
+                selectDevice(device);
+            } else {
+                pairDevice(device);
             }
         });
     }
@@ -127,6 +95,23 @@ public final class ObdBluetoothActivity extends AppCompatActivity {
     protected void onDestroy() {
         binding = null;
         super.onDestroy();
+    }
+
+    /**
+     * Abre los ajustes Bluetooth del sistema; si esa pantalla no existe en la
+     * radio, cae a los ajustes generales, y si tampoco están, avisa por Toast.
+     */
+    private void openBluetoothSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+        } catch (ActivityNotFoundException e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            } catch (ActivityNotFoundException e2) {
+                Toast.makeText(this, R.string.settings_no_bt_settings_app,
+                        Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     // Escaneo y emparejado

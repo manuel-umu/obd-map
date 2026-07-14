@@ -8,6 +8,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import obdmap.launcher.BuildConfig;
+import obdmap.launcher.util.IoUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,35 +18,44 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Descarga el APK de una {@link UpdateInfo} al almacenamiento
+ * Descarga el APK de una {@link UpdateInfo} al almacenamiento externo propio de
+ * la app ({@code getExternalFilesDir("apk")}), la ruta expuesta por el
+ * {@code FileProvider}. La descarga corre en un hilo propio y los callbacks se
+ * entregan siempre en el hilo principal.
  */
 public final class UpdateDownloader {
+
     private static final String TAG = "UpdateDownloader";
+
+    /** Subdirectorio dentro de getExternalFilesDir; debe coincidir con file_paths.xml. */
     private static final String APK_SUBDIR = "apk";
     private static final String APK_FILENAME = "update.apk";
+
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 20000;
     private static final int BUFFER_SIZE = 8192;
 
-    /** Callbacks de la descarga */
+    /** Callbacks de la descarga. Todos se invocan en el hilo principal. */
     public interface DownloadListener {
+        /** Progreso 0-100; como mucho una llamada por punto porcentual. */
         void onProgress(int percent);
+
+        /** Descarga completa; {@code apk} queda listo para instalar. */
         void onComplete(@NonNull File apk);
+
+        /** Fallo de red o de escritura. */
         void onError(@NonNull String message);
     }
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public void download(@NonNull final Context context,
+    public void download(@NonNull Context context,
                          @NonNull final UpdateInfo info,
                          @NonNull final DownloadListener listener) {
+        // applicationContext para no retener la Activity durante la descarga.
         final Context appContext = context.getApplicationContext();
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                runDownload(appContext, info, listener);
-            }
-        }, "update-downloader");
+        Thread thread = new Thread(() -> runDownload(appContext, info, listener),
+                "update-downloader");
         thread.setDaemon(true);
         thread.start();
     }
@@ -64,11 +74,9 @@ public final class UpdateDownloader {
         }
 
         File apkFile = new File(dir, APK_FILENAME);
-        // Borramos cualquier descarga previa para no instalar un APK a medias
-        if (apkFile.exists() && !apkFile.delete()) {
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "No se pudo borrar el APK previo; se sobrescribirá");
-            }
+        // Se elimina cualquier descarga previa para no instalar un APK a medias.
+        if (apkFile.exists() && !apkFile.delete() && BuildConfig.DEBUG) {
+            Log.d(TAG, "No se pudo borrar el APK previo; se sobrescribirá");
         }
 
         HttpURLConnection conn = null;
@@ -79,6 +87,7 @@ public final class UpdateDownloader {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
+            // El asset de GitHub redirige a un CDN; se sigue el 302 automáticamente.
             conn.setInstanceFollowRedirects(true);
             conn.setRequestProperty("User-Agent", "OBD-Map-Updater");
 
@@ -87,6 +96,8 @@ public final class UpdateDownloader {
                 postError(listener, "HTTP " + code);
                 return;
             }
+
+            // Content-Length si el servidor lo envía; si no, el tamaño de la API.
             long total = conn.getContentLength();
             if (total <= 0) {
                 total = info.sizeBytes;
@@ -106,60 +117,30 @@ public final class UpdateDownloader {
                     int percent = (int) (downloaded * 100 / total);
                     if (percent != lastPercent) {
                         lastPercent = percent;
-                        postProgress(listener, percent);
+                        final int p = percent;
+                        mainHandler.post(() -> listener.onProgress(p));
                     }
                 }
             }
             out.flush();
 
-            postComplete(listener, apkFile);
+            final File result = apkFile;
+            mainHandler.post(() -> listener.onComplete(result));
         } catch (Exception e) {
             postError(listener, e.getMessage() != null ? e.getMessage() : e.toString());
         } finally {
-            closeQuietly(out);
-            closeQuietly(in);
+            IoUtils.closeQuietly(out);
+            IoUtils.closeQuietly(in);
             if (conn != null) {
                 conn.disconnect();
             }
         }
     }
 
-    private static void closeQuietly(@androidx.annotation.Nullable java.io.Closeable c) {
-        if (c == null) {
-            return;
+    private void postError(@NonNull DownloadListener listener, @NonNull String message) {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Descarga fallida: " + message);
         }
-        try {
-            c.close();
-        } catch (Exception ignored) {
-        }
-    }
-
-    // Auxiliares
-
-    private void postProgress(@NonNull final DownloadListener listener, final int percent) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onProgress(percent);
-            }
-        });
-    }
-
-    private void postComplete(@NonNull final DownloadListener listener, @NonNull final File apk) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onComplete(apk);
-            }
-        });
-    }
-
-    private void postError(@NonNull final DownloadListener listener, @NonNull final String message) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onError(message);
-            }
-        });
+        mainHandler.post(() -> listener.onError(message));
     }
 }

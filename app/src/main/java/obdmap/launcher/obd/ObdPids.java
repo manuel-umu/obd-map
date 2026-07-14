@@ -50,41 +50,38 @@ public final class ObdPids {
      * @return el valor decodificado; para PIDs desconocidos, los dos bytes juntos
      */
     public static int decode(@NonNull String pid, int a, int b) {
-        if (RPM.equals(pid)) {
-            // RPM real = (A*256 + B) / 4. Resolución 0,25 rpm redondeada a entero.
-            return ((a << 8) | b) / 4;
-        } else if (SPEED.equals(pid)) {
-            // Velocidad en km/h, directa.
-            return a;
-        } else if (LOAD.equals(pid)) {
-            // Carga del motor en porcentaje: (A * 100) / 255.
-            return (a * 100) / 255;
-        } else if (MAF.equals(pid)) {
-            // MAF en punto fijo g/s×100: valor = (A*256 + B).
-            // NO se divide aquí: en ralentí (~2-4 g/s) la división entera
-            // entre 100 perdería casi toda la precisión.
-            return (a << 8) | b;
-        } else if (THROTTLE.equals(pid)) {
-            // Posición del acelerador: (A * 100) / 255 → porcentaje entero.
-            return (a * 100) / 255;
-        } else if (COOLANT.equals(pid)) {
-            // Temperatura del refrigerante: A - 40 → °C. Rango real -40..+215 °C.
-            return a - 40;
-        } else if (IAT.equals(pid)) {
-            // Temperatura de admisión (IAT): A - 40 → °C. Mismo encoding que 0105.
-            return a - 40;
-        } else if (MAP.equals(pid)) {
-            // Presión absoluta del colector (MAP): A → kPa directo.
-            return a;
-        } else if (FUEL_RATE.equals(pid)) {
-            // Tasa de combustible (Engine Fuel Rate): L/h = (A*256 + B) / 20.0.
-            // Se devuelve el raw sin dividir para no perder precisión;
-            // el consumidor (FuelCalculator) divide entre 20.
-            return (a << 8) | b;
-        } else {
-            // PID genérico: devolvemos los primeros dos bytes de datos combinados
-            // para no perder información que el consumidor pueda interpretar.
-            return (a << 8) | b;
+        switch (pid) {
+            case RPM:
+                // RPM real = (A*256 + B) / 4. Resolución 0,25 rpm redondeada a entero.
+                return ((a << 8) | b) / 4;
+
+            case SPEED:
+                // Velocidad en km/h, directa.
+                return a;
+
+            case LOAD:
+            case THROTTLE:
+                // Porcentaje entero: (A * 100) / 255.
+                return (a * 100) / 255;
+
+            case COOLANT:
+            case IAT:
+                // Temperaturas: A - 40 → °C. Rango real -40..+215 °C.
+                return a - 40;
+
+            case MAP:
+                // Presión absoluta del colector: A → kPa directo.
+                return a;
+
+            case MAF:
+            case FUEL_RATE:
+                // Punto fijo sin dividir (g/s×100 y L/h×20 respectivamente):
+                // la división entera aquí perdería casi toda la precisión, así
+                // que la aplica el consumidor con la escala que le corresponde.
+            default:
+                // PID desconocido: los dos bytes de datos combinados, para no
+                // perder información que el consumidor pueda interpretar.
+                return (a << 8) | b;
         }
     }
 }

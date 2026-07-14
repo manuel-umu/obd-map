@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import obdmap.launcher.BuildConfig;
+import obdmap.launcher.util.IoUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,38 +21,45 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Comprueba en GitHub Releases si hay una versión más nueva que la instalada
+ * Comprueba en GitHub Releases si hay una versión más nueva que la instalada.
+ * Hace una única petición HTTP a la API pública del repositorio y compara el
+ * versionCode del tag con {@link BuildConfig#VERSION_CODE}.
+ *
+ * <p>Sin dependencias externas: {@link HttpURLConnection} + {@code org.json},
+ * ambos del framework. La comprobación corre en un hilo propio y los callbacks
+ * se entregan siempre en el hilo principal.</p>
+ *
+ * <p><b>Convención del tag:</b> el {@code tag_name} de la release es el
+ * versionCode, con prefijo {@code v} opcional (p. ej. {@code "v3"} o {@code "3"}).</p>
  */
 public final class UpdateChecker {
 
     private static final String TAG = "UpdateChecker";
 
-    /** Endpoint de la última release */
+    /** Endpoint de la última release publicada del repositorio. */
     private static final String LATEST_RELEASE_URL =
             "https://api.github.com/repos/manuel-umu/obd-map/releases/latest";
 
     private static final int CONNECT_TIMEOUT_MS = 8000;
     private static final int READ_TIMEOUT_MS = 8000;
 
-    /** Resultado de la comprobación */
+    /** Resultado de la comprobación. Todos los métodos se invocan en el hilo principal. */
     public interface CheckListener {
+        /** Hay una versión más nueva disponible. */
         void onUpdateAvailable(@NonNull UpdateInfo info);
+
+        /** La app ya está en la última versión. */
         void onNoUpdate();
+
+        /** No se pudo comprobar (sin red, error HTTP, respuesta malformada…). */
         void onError(@NonNull String message);
     }
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    /**
-     * Lanza la comprobación en un hilo
-     */
+    /** Lanza la comprobación en un hilo de fondo de un solo uso. */
     public void check(@NonNull final CheckListener listener) {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                runCheck(listener);
-            }
-        }, "update-checker");
+        Thread thread = new Thread(() -> runCheck(listener), "update-checker");
         thread.setDaemon(true);
         thread.start();
     }
@@ -64,7 +72,7 @@ public final class UpdateChecker {
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setRequestProperty("Accept", "application/vnd.github+json");
-            // GitHub exige un User-Agent en todas las peticiones a su API
+            // GitHub exige User-Agent en todas las peticiones a su API.
             conn.setRequestProperty("User-Agent", "OBD-Map-Updater");
 
             int code = conn.getResponseCode();
@@ -74,16 +82,16 @@ public final class UpdateChecker {
             }
 
             String body = readBody(conn.getInputStream());
-            UpdateInfo info = parse(body);
+            final UpdateInfo info = parse(body);
             if (info == null) {
                 postError(listener, "Respuesta sin APK o tag inválido");
                 return;
             }
 
             if (info.versionCode > BuildConfig.VERSION_CODE) {
-                postAvailable(listener, info);
+                mainHandler.post(() -> listener.onUpdateAvailable(info));
             } else {
-                postNoUpdate(listener);
+                mainHandler.post(listener::onNoUpdate);
             }
         } catch (Exception e) {
             postError(listener, e.getMessage() != null ? e.getMessage() : e.toString());
@@ -106,18 +114,21 @@ public final class UpdateChecker {
                 sb.append(buffer, 0, n);
             }
         } finally {
-            reader.close();
+            IoUtils.closeQuietly(reader);
         }
         return sb.toString();
     }
 
     /**
-     * Parsea la respuesta de la API y localiza el primer .apk
+     * Parsea la respuesta de la API y localiza el primer asset {@code .apk}.
+     *
+     * @return la info de la release, o {@code null} si no hay tag válido ni APK
      */
     @Nullable
     private UpdateInfo parse(@NonNull String json) {
         try {
             JSONObject root = new JSONObject(json);
+
             int versionCode = parseVersionCode(root.optString("tag_name", ""));
             if (versionCode < 0) {
                 return null;
@@ -152,8 +163,8 @@ public final class UpdateChecker {
     }
 
     /**
-     * Extrae el versionCode del tag. Acepta un prefijo {@code v}/{@code V} opcional
-     * y toma los dígitos iniciales (p. ej. {@code "v12"} → 12).
+     * Extrae el versionCode del tag: prefijo {@code v}/{@code V} opcional
+     * seguido de los dígitos iniciales (p. ej. {@code "v12"} → 12).
      *
      * @return el versionCode, o -1 si el tag no empieza por un número
      */
@@ -176,35 +187,10 @@ public final class UpdateChecker {
         }
     }
 
-    // Auxiliares
-
-    private void postAvailable(@NonNull final CheckListener listener, @NonNull final UpdateInfo info) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onUpdateAvailable(info);
-            }
-        });
-    }
-
-    private void postNoUpdate(@NonNull final CheckListener listener) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onNoUpdate();
-            }
-        });
-    }
-
-    private void postError(@NonNull final CheckListener listener, @NonNull final String message) {
+    private void postError(@NonNull CheckListener listener, @NonNull String message) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "Comprobación fallida: " + message);
         }
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onError(message);
-            }
-        });
+        mainHandler.post(() -> listener.onError(message));
     }
 }

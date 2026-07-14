@@ -1,5 +1,5 @@
 /**
- * Auto-actualización OTA de la app (Fase 10).
+ * Auto-actualización OTA de la app.
  *
  * <p>Comprueba GitHub Releases, descarga el APK más reciente y lanza su
  * instalación por el instalador del sistema, sin cables ni Play Store. Cero

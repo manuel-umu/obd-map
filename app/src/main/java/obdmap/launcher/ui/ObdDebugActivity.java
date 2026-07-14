@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -54,19 +53,10 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
 
         prefsManager = new PrefsManager(this);
 
-        binding.debugBackButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-
-        binding.debugResetAvgButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (boundService != null) {
-                    boundService.resetAverageFuel();
-                }
+        binding.debugBackButton.setOnClickListener(v -> finish());
+        binding.debugResetAvgButton.setOnClickListener(v -> {
+            if (boundService != null) {
+                boundService.resetAverageFuel();
             }
         });
     }

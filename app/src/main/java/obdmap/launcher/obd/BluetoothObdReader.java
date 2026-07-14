@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothSocket;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import obdmap.launcher.util.IoUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -100,12 +102,7 @@ public final class BluetoothObdReader {
             return;
         }
         running = true;
-        obdThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                runLoop();
-            }
-        }, "obd-reader");
+        obdThread = new Thread(this::runLoop, "obd-reader");
         obdThread.setDaemon(true);
         obdThread.start();
     }
@@ -124,7 +121,7 @@ public final class BluetoothObdReader {
             obdThread.interrupt();
         }
         // Cerramos el socket para que la lectura se desbloquee
-        closeQuietly(socket);
+        IoUtils.closeQuietly(socket);
         socket = null;
         try {
             if (obdThread != null) {
@@ -286,7 +283,7 @@ public final class BluetoothObdReader {
             return true;
 
         } catch (IOException e) {
-            closeQuietly(newSocket);
+            IoUtils.closeQuietly(newSocket);
             socket = null;
             inputStream = null;
             outputStream = null;
@@ -333,7 +330,6 @@ public final class BluetoothObdReader {
         if (response == null) {
             return false;
         }
-        // toUpperCase asignaría un objeto nuevo; comparamos con indexOf insensible manual.
         return containsIgnoreCase(response, expectedToken);
     }
 
@@ -597,27 +593,12 @@ public final class BluetoothObdReader {
 
     /** Cierra streams y socket sin protestar, y deja los campos a null. */
     private void closeConnection() {
-        closeQuietly(inputStream);
-        closeQuietly(outputStream);
-        closeQuietly(socket);
+        IoUtils.closeQuietly(inputStream);
+        IoUtils.closeQuietly(outputStream);
+        IoUtils.closeQuietly(socket);
         inputStream  = null;
         outputStream = null;
         socket       = null;
-    }
-
-    /**
-     * Cierra cualquier recurso ignorando errores. Centralizado para no
-     * repetir try/catch vacíos por todo el fichero.
-     */
-    private static void closeQuietly(@Nullable java.io.Closeable closeable) {
-        if (closeable == null) {
-            return;
-        }
-        try {
-            closeable.close();
-        } catch (IOException ignored) {
-            // Silencioso por diseño: ya estábamos en el camino de error.
-        }
     }
 
     /**
@@ -625,22 +606,11 @@ public final class BluetoothObdReader {
      * y sin crear Strings nuevos por el camino (nada de toUpperCase).
      */
     private static boolean containsIgnoreCase(@NonNull String source, @NonNull String token) {
-        int sourceLen = source.length();
-        int tokenLen  = token.length();
-        if (tokenLen == 0) return true;
-        if (tokenLen > sourceLen) return false;
-
-        outer:
-        for (int i = 0; i <= sourceLen - tokenLen; i++) {
-            for (int j = 0; j < tokenLen; j++) {
-                char cs = source.charAt(i + j);
-                char ct = token.charAt(j);
-                // Comparación ASCII case-insensitive (suficiente para "ELM327", "OK").
-                if (cs != ct && Character.toLowerCase(cs) != Character.toLowerCase(ct)) {
-                    continue outer;
-                }
+        int max = source.length() - token.length();
+        for (int i = 0; i <= max; i++) {
+            if (source.regionMatches(true, i, token, 0, token.length())) {
+                return true;
             }
-            return true;
         }
         return false;
     }

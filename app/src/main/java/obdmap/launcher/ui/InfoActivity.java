@@ -31,26 +31,11 @@ public final class InfoActivity extends AppCompatActivity {
         binding.infoVersionText.setText(getString(R.string.info_version_installed,
                 BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
 
-        binding.backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-
-        binding.infoCheckButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                checkForUpdate();
-            }
-        });
-
-        binding.infoInstallButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (availableUpdate != null) {
-                    updateManager.downloadAndInstall(InfoActivity.this, availableUpdate);
-                }
+        binding.backButton.setOnClickListener(v -> finish());
+        binding.infoCheckButton.setOnClickListener(v -> checkForUpdate());
+        binding.infoInstallButton.setOnClickListener(v -> {
+            if (availableUpdate != null) {
+                updateManager.downloadAndInstall(this, availableUpdate);
             }
         });
     }

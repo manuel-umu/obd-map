@@ -144,16 +144,13 @@ public final class MainActivity extends AppCompatActivity
 
     private final Handler hudHandler = new Handler(Looper.getMainLooper());
 
-    private final Runnable hudRefreshRunnable = new Runnable() {
-        @Override
-        public void run() {
-            hudRefreshPending = false;
-            if (binding == null || boundService == null) {
-                return;
-            }
-            lastHudRefreshMs = SystemClock.uptimeMillis();
-            updateHudValue();
+    private final Runnable hudRefreshRunnable = () -> {
+        hudRefreshPending = false;
+        if (binding == null || boundService == null) {
+            return;
         }
+        lastHudRefreshMs = SystemClock.uptimeMillis();
+        updateHudValue();
     };
 
     @SuppressLint("ClickableViewAccessibility")
@@ -168,74 +165,28 @@ public final class MainActivity extends AppCompatActivity
         ttsManager = new TtsManager(this);
         navVoiceAnnouncer = new NavVoiceAnnouncer(this, ttsManager);
 
-        binding.appSettingsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
-            }
-        });
-
-        binding.openDestinationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, DestinationActivity.class));
-            }
-        });
-
-        binding.destConfirmGoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                confirmPickedDestination();
-            }
-        });
-
-        binding.destConfirmCancelButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                cancelPickedDestination();
-            }
-        });
-
-        binding.dayNightToggleButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                toggleDayNight();
-            }
-        });
-
-        binding.recenterButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                autoCenter = true;
-                // Sincronizar el flag en PositionLayer para que vuelva al path
-                // de sincronización directa con el viewport (sin interpolación propia).
-                if (positionLayer != null) {
-                    positionLayer.setAutoCenter(true);
-                }
-                binding.recenterButton.setVisibility(View.GONE);
-                // Centramos inmediatamente si ya tenemos posición.
-                if (!Double.isNaN(lastLat) && mapManager != null) {
-                    mapManager.centerAt(lastLat, lastLon);
-                }
-            }
-        });
+        binding.appSettingsButton.setOnClickListener(
+                v -> startActivity(new Intent(this, SettingsActivity.class)));
+        binding.openDestinationButton.setOnClickListener(
+                v -> startActivity(new Intent(this, DestinationActivity.class)));
+        binding.destConfirmGoButton.setOnClickListener(v -> confirmPickedDestination());
+        binding.destConfirmCancelButton.setOnClickListener(v -> cancelPickedDestination());
+        binding.dayNightToggleButton.setOnClickListener(v -> toggleDayNight());
+        binding.recenterButton.setOnClickListener(v -> recenterOnPosition());
 
         // Detectar movimiento manual en el mapa.
         // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
-        binding.mapView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_MOVE && autoCenter) {
-                    autoCenter = false;
-                    // Sincronizar en PositionLayer para que use interpolación propia.
-                    if (positionLayer != null) {
-                        positionLayer.setAutoCenter(false);
-                    }
-                    binding.recenterButton.setVisibility(View.VISIBLE);
+        binding.mapView.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_MOVE && autoCenter) {
+                autoCenter = false;
+                // Sincronizar en PositionLayer para que use interpolación propia.
+                if (positionLayer != null) {
+                    positionLayer.setAutoCenter(false);
                 }
-                // Devolvemos false para que VTM siga procesando el gesto normalmente.
-                return false;
+                binding.recenterButton.setVisibility(View.VISIBLE);
             }
+            // Devolvemos false para que VTM siga procesando el gesto normalmente.
+            return false;
         });
 
         applyHudVisibility();
@@ -373,13 +324,7 @@ public final class MainActivity extends AppCompatActivity
         // Capa de selección de destino por long-press. Se añade encima del resto
         // para recibir el gesto antes que otras capas.
         destinationPickerLayer = new DestinationPickerLayer(
-                binding.mapView.map(),
-                new DestinationPickerLayer.OnDestinationPickedListener() {
-                    @Override
-                    public void onDestinationPicked(double lat, double lon) {
-                        showDestinationConfirmPanel(lat, lon);
-                    }
-                });
+                binding.mapView.map(), this::showDestinationConfirmPanel);
 
         binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText(getString(R.string.status_map_loaded, mapFile.getName()));
@@ -698,6 +643,21 @@ public final class MainActivity extends AppCompatActivity
         if (mac != null && !mac.isEmpty()) {
             Intent intent = new Intent(this, ObdService.class);
             ContextCompat.startForegroundService(this, intent);
+        }
+    }
+
+    /**
+     * Reactiva el auto-centrado tras un pan manual: sincroniza el flag con
+     * PositionLayer, oculta el botón y centra ya mismo si hay posición.
+     */
+    private void recenterOnPosition() {
+        autoCenter = true;
+        if (positionLayer != null) {
+            positionLayer.setAutoCenter(true);
+        }
+        binding.recenterButton.setVisibility(View.GONE);
+        if (!Double.isNaN(lastLat) && mapManager != null) {
+            mapManager.centerAt(lastLat, lastLon);
         }
     }
 

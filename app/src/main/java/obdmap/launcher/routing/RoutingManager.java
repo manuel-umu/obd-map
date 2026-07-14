@@ -116,22 +116,12 @@ public final class RoutingManager {
                                final double toLat, final double toLon,
                                @NonNull final RouteCallback cb) {
         if (state != STATE_READY || hopper == null) {
-            final String msg = "grafo no cargado";
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    cb.onRouteError(msg);
-                }
-            });
+            mainHandler.post(() -> cb.onRouteError("grafo no cargado"));
             return;
         }
         final GraphHopper gh = hopper;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                routeInBackground(gh, fromLat, fromLon, toLat, toLon, cb);
-            }
-        }, "gh-route").start();
+        new Thread(() -> routeInBackground(gh, fromLat, fromLon, toLat, toLon, cb),
+                "gh-route").start();
     }
 
     /**
@@ -144,8 +134,8 @@ public final class RoutingManager {
         try {
             GHRequest req = new GHRequest(fromLat, fromLon, toLat, toLon);
             req.setProfile("car");
-            // Se desactivan ambos para que se use Dijkstra/A* puro sin intentar CH.
-            // TODO: Reactivar cuando haya server
+            // El grafo empaquetado no trae preparación CH ni Landmarks, así que se
+            // desactivan ambos hints para forzar el algoritmo flexible (Dijkstra/A*).
             req.putHint(Parameters.CH.DISABLE, true);
             req.putHint(Parameters.Landmark.DISABLE, true);
 
@@ -160,12 +150,7 @@ public final class RoutingManager {
                     sb.append(t.getMessage());
                 }
                 final String errorMsg = sb.toString();
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        cb.onRouteError(errorMsg);
-                    }
-                });
+                mainHandler.post(() -> cb.onRouteError(errorMsg));
                 return;
             }
 
@@ -174,12 +159,7 @@ public final class RoutingManager {
             int count = pts.size();
 
             if (count == 0) {
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        cb.onRouteError("no se encontró ruta");
-                    }
-                });
+                mainHandler.post(() -> cb.onRouteError("no se encontró ruta"));
                 return;
             }
 
@@ -220,21 +200,11 @@ public final class RoutingManager {
             final Route route = new Route(lats, lons, path.getDistance(), path.getTime(),
                     instrSigns, instrNames, instrDistances, instrTimes, instrLats, instrLons);
 
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    cb.onRouteReady(route);
-                }
-            });
+            mainHandler.post(() -> cb.onRouteReady(route));
 
         } catch (final Exception e) {
             final String msg = e.getMessage() != null ? e.getMessage() : "Error desconocido en routing";
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    cb.onRouteError(msg);
-                }
-            });
+            mainHandler.post(() -> cb.onRouteError(msg));
         }
     }
 
@@ -256,12 +226,7 @@ public final class RoutingManager {
 
         final Context appContext = context.getApplicationContext();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                loadInBackground(appContext, listener);
-            }
-        }, "gh-loader").start();
+        new Thread(() -> loadInBackground(appContext, listener), "gh-loader").start();
     }
 
     // ------------------------------------------------------------------
@@ -298,23 +263,14 @@ public final class RoutingManager {
             hopper = gh;
             state = STATE_READY;
 
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    listener.onRoutingReady();
-                }
-            });
+            mainHandler.post(listener::onRoutingReady);
 
         } catch (final Exception e) {
             lastError = e.getMessage();
             state = STATE_ERROR;
 
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    listener.onRoutingError(lastError != null ? lastError : "Error desconocido");
-                }
-            });
+            mainHandler.post(() ->
+                    listener.onRoutingError(lastError != null ? lastError : "Error desconocido"));
         }
     }
 
@@ -373,11 +329,6 @@ public final class RoutingManager {
 
     private void notifyProgress(@NonNull final RoutingListener listener,
                                 @NonNull final String message) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onRoutingProgress(message);
-            }
-        });
+        mainHandler.post(() -> listener.onRoutingProgress(message));
     }
 }

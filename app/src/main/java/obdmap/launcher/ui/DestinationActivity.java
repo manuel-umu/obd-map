@@ -1,7 +1,6 @@
 package obdmap.launcher.ui;
 
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -29,28 +28,12 @@ public final class DestinationActivity extends AppCompatActivity {
 
         prefsManager = new PrefsManager(this);
 
-        binding.btnSetDestination.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onSetDestinationClicked();
-            }
-        });
-
-        binding.btnCancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                finish();
-            }
-        });
-
-        binding.btnClearDestination.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                prefsManager.clearDestination();
-                Toast.makeText(DestinationActivity.this,
-                        R.string.toast_destination_cleared, Toast.LENGTH_SHORT).show();
-                finish();
-            }
+        binding.btnSetDestination.setOnClickListener(v -> onSetDestinationClicked());
+        binding.btnCancel.setOnClickListener(v -> finish());
+        binding.btnClearDestination.setOnClickListener(v -> {
+            prefsManager.clearDestination();
+            Toast.makeText(this, R.string.toast_destination_cleared, Toast.LENGTH_SHORT).show();
+            finish();
         });
 
         // Si ya hay un destino guardado, lo mostramos en los campos al abrir.

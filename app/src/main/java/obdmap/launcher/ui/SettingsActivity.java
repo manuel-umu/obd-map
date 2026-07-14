@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -28,40 +27,14 @@ public final class SettingsActivity extends AppCompatActivity {
         binding = ActivitySettingsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        binding.btnBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-
-        binding.btnBluetooth.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(SettingsActivity.this, ObdBluetoothActivity.class));
-            }
-        });
-
-        binding.btnSystemSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openSystemSettings();
-            }
-        });
-
-        binding.btnObdDebug.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(SettingsActivity.this, ObdDebugActivity.class));
-            }
-        });
-
-        binding.btnInfo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(SettingsActivity.this, InfoActivity.class));
-            }
-        });
+        binding.btnBack.setOnClickListener(v -> finish());
+        binding.btnBluetooth.setOnClickListener(
+                v -> startActivity(new Intent(this, ObdBluetoothActivity.class)));
+        binding.btnSystemSettings.setOnClickListener(v -> openSystemSettings());
+        binding.btnObdDebug.setOnClickListener(
+                v -> startActivity(new Intent(this, ObdDebugActivity.class)));
+        binding.btnInfo.setOnClickListener(
+                v -> startActivity(new Intent(this, InfoActivity.class)));
     }
 
     @Override

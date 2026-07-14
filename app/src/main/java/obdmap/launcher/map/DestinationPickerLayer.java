@@ -112,12 +112,7 @@ public final class DestinationPickerLayer extends Layer implements GestureListen
         pinVisible = true;
 
         // Notificar en el hilo de UI para que la Activity pueda manipular vistas.
-        uiHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                listener.onDestinationPicked(lat, lon);
-            }
-        });
+        uiHandler.post(() -> listener.onDestinationPicked(lat, lon));
 
         return true;
     }
