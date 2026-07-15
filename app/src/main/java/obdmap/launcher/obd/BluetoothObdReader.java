@@ -481,20 +481,37 @@ public final class BluetoothObdReader {
      * Saca los bytes de datos de la respuesta y deja la decodificación en manos
      * de ObdPids.decode(), que es donde viven todas las fórmulas y unidades.
      *
+     * No basta con coger bytes[2]/bytes[3] a ciegas: hay que validar la cabecera
+     * "41 <pid>" y localizar los datos RESPECTO a ella. De lo contrario se
+     * decodifican como valores reales respuestas que no lo son —negativas
+     * (0x7F...), tramas de otro PID que llegan desfasadas, restos de "SEARCHING"
+     * o ruido de línea— y salen números irreales (RPM fantasma con el coche
+     * parado, cientos de L/h de consumo, saltos bruscos).
+     *
      * @return valor decodificado, o Integer.MIN_VALUE si la respuesta no vale
      */
     private int extractObdValue(@NonNull String response, @NonNull String pid) {
         // La respuesta puede incluir espacios: "41 0C 1A F8" o sin espacios "410C1AF8".
         int[] bytes = extractHexBytes(response);
-        if (bytes == null || bytes.length < 3) {
-            // Necesitamos al menos: byte de modo (41), byte de PID, y un byte de dato.
+        if (bytes == null) {
             return Integer.MIN_VALUE;
         }
 
-        // bytes[0] = 0x41 (modo 01 respuesta), bytes[1] = PID, bytes[2..] = datos.
-        int a = bytes[2];
-        int b = bytes.length > 3 ? bytes[3] : 0;
-        return ObdPids.decode(pid, a, b);
+        // Cabecera esperada de una respuesta positiva: (0x40 | modo) seguido del byte de PID
+        int expectedMode = 0x40 | ((hexDigit(pid.charAt(0)) << 4) | hexDigit(pid.charAt(1)));
+        int expectedPid  = (hexDigit(pid.charAt(2)) << 4) | hexDigit(pid.charAt(3));
+
+        // Buscamos la cabecera dentro
+        for (int j = 0; j + 2 < bytes.length; j++) {
+            if (bytes[j] == expectedMode && bytes[j + 1] == expectedPid) {
+                int a = bytes[j + 2];
+                int b = (j + 3 < bytes.length) ? bytes[j + 3] : 0;
+                return ObdPids.decode(pid, a, b);
+            }
+        }
+
+        // Sin cabecera válida para este PID: respuesta no valida.
+        return Integer.MIN_VALUE;
     }
 
     /**
