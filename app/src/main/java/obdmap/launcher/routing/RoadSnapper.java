@@ -5,10 +5,11 @@ import androidx.annotation.Nullable;
 
 import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.util.EdgeFilter;
-import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.FetchMode;
+import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint3D;
 
 /**
@@ -175,13 +176,27 @@ public final class RoadSnapper {
         if (hasBearing) {
             EdgeIteratorState edge = qr.getClosestEdge();
             if (edge != null) {
-                NodeAccess na = hopper.getGraphHopperStorage().getNodeAccess();
-                double baseLat = na.getLat(edge.getBaseNode());
-                double baseLon = na.getLon(edge.getBaseNode());
-                double adjLat  = na.getLat(edge.getAdjNode());
-                double adjLon  = na.getLon(edge.getAdjNode());
+                PointList geom = edge.fetchWayGeometry(FetchMode.ALL);
+                if (geom.size() < 2) {
+                    GHPoint3D pt = qr.getSnappedPoint();
+                    out[0] = pt.lat;
+                    out[1] = pt.lon;
+                    return true;
+                }
+                int segStart = qr.getWayIndex();
+                // En snaps de torre/pilar wayIndex apunta al propio vértice; el
+                // segmento hacia delante arranca ahí. Acotar al último segmento.
+                if (segStart > geom.size() - 2) {
+                    segStart = geom.size() - 2;
+                }
+                if (segStart < 0) {
+                    segStart = 0;
+                }
+                double baseLat = geom.getLat(segStart);
+                double baseLon = geom.getLon(segStart);
+                double adjLat  = geom.getLat(segStart + 1);
+                double adjLon  = geom.getLon(segStart + 1);
 
-                // Azimut geográfico de la arista (base -> adj), en grados [0, 360).
                 // atan2 con (dLon * cos(lat), dLat) da el azimut en coordenadas esféricas.
                 double cosLat   = Math.cos(Math.toRadians(lat));
                 double dLat     = adjLat - baseLat;
