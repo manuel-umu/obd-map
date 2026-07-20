@@ -10,6 +10,11 @@ on:
         options:
           - menor
           - mayor
+      descripcion:
+        description: "Descripción"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -84,13 +89,21 @@ jobs:
       - name: Crear la GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          DESCRIPCION: ${{ inputs.descripcion }}
         run: |
           cp app/build/outputs/apk/release/app-release.apk "obdmap-${{ steps.v.outputs.name }}.apk"
+          # Notas: la descripción escrita por el usuario, o un texto automático si se dejó vacía.
+          if [ -n "$DESCRIPCION" ]; then
+            printf '%s\n' "$DESCRIPCION" > release-notes.md
+          else
+            printf 'Release automática %s (versionCode %s).\n' \
+              "${{ steps.v.outputs.name }}" "${{ steps.v.outputs.code }}" > release-notes.md
+          fi
           gh release create "${{ steps.v.outputs.code }}" \
             "obdmap-${{ steps.v.outputs.name }}.apk" \
             --title "${{ steps.v.outputs.name }}" \
             --latest \
-            --notes "Release automática ${{ steps.v.outputs.name }} (versionCode ${{ steps.v.outputs.code }})."
+            --notes-file release-notes.md
 
       - name: Limpiar el keystore del runner
         if: always()
