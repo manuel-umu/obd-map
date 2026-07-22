@@ -1,5 +1,6 @@
 package obdmap.launcher.prefs;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -33,6 +34,12 @@ public final class PrefsManager {
 
     // Preferencia de modo noche (true = noche, false = día).
     private static final String KEY_NIGHT_MODE = "night_mode";
+
+    // Identificador de la región de datos offline activa (ver RegionData).
+    private static final String KEY_ACTIVE_REGION = "active_region";
+
+    // Prefijo de la versión de datos instalada, por región: se le concatena el id
+    private static final String KEY_DATA_VERSION_PREFIX = "data_version_";
 
     // ---------------------------------------------------------------------
     // Estado interno
@@ -120,6 +127,42 @@ public final class PrefsManager {
                 .remove(DEST_LAT_KEY)
                 .remove(DEST_LON_KEY)
                 .apply();
+    }
+
+    // ---------------------------------------------------------------------
+    // Región de datos offline
+    // ---------------------------------------------------------------------
+
+    /** Id de la región activa, o null para usar la de por defecto. */
+    @Nullable
+    public String getActiveRegionId() {
+        return prefs.getString(KEY_ACTIVE_REGION, null);
+    }
+
+    public void setActiveRegionId(@Nullable String regionId) {
+        prefs.edit().putString(KEY_ACTIVE_REGION, regionId).apply();
+    }
+
+    /**
+     * Versión de datos instalada de una región, o null si no hay ninguna.
+     */
+    @Nullable
+    public String getInstalledDataVersion(@NonNull String regionId) {
+        return prefs.getString(KEY_DATA_VERSION_PREFIX + regionId, null);
+    }
+
+    /**
+     * Marca la versión de datos instalada
+     */
+    @SuppressLint("ApplySharedPref")
+    public void setInstalledDataVersion(@NonNull String regionId, @NonNull String version) {
+        prefs.edit().putString(KEY_DATA_VERSION_PREFIX + regionId, version).commit();
+    }
+
+    /** Invalida la versión instalada de una región (fuerza reinstalación). */
+    @SuppressLint("ApplySharedPref")
+    public void clearInstalledDataVersion(@NonNull String regionId) {
+        prefs.edit().remove(KEY_DATA_VERSION_PREFIX + regionId).commit();
     }
 
     // ---------------------------------------------------------------------

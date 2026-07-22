@@ -21,13 +21,6 @@ import java.net.URL;
  */
 public final class MapDownloader {
 
-    // URL del mapa en el repositorio oficial de Mapsforge.
-    private static final String MAP_URL =
-            "https://download.mapsforge.org/maps/v5/europe/spain/murcia.map";
-
-    // Nombre del fichero final en disco.
-    private static final String MAP_FILENAME = "murcia.map";
-
     // Tamaño del buffer de lectura: 8 KB, reutilizado durante toda la descarga.
     private static final int BUFFER_SIZE = 8 * 1024;
 
@@ -44,13 +37,11 @@ public final class MapDownloader {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     /**
-     * Devuelve el fichero de destino del mapa descargado.
-     * Usa getExternalFilesDir(null), que no requiere permiso WRITE_EXTERNAL_STORAGE
-     * en ninguna versión de Android, a diferencia de los directorios públicos.
+     * Devuelve el fichero de destino del mapa de una región
      */
     @NonNull
-    public static File getMapFile(@NonNull Context ctx) {
-        return new File(ctx.getExternalFilesDir(null), MAP_FILENAME);
+    public static File getMapFile(@NonNull Context ctx, @NonNull RegionData region) {
+        return region.mapFile(ctx);
     }
 
     /** true mientras la descarga está en marcha. */
@@ -71,16 +62,19 @@ public final class MapDownloader {
      * IllegalStateException para que el llamador lo detecte en tiempo de desarrollo.
      *
      * @param ctx      Contexto para obtener el directorio de destino.
+     * @param region   Región cuyo .map se descarga (aporta URL y nombre).
      * @param listener Receptor de callbacks (main thread).
      */
-    public void start(@NonNull final Context ctx, @NonNull final MapDownloadListener listener) {
+    public void start(@NonNull final Context ctx,
+                      @NonNull final RegionData region,
+                      @NonNull final MapDownloadListener listener) {
         if (running) {
             throw new IllegalStateException("Ya hay una descarga en curso");
         }
         running   = true;
         cancelled = false;
 
-        Thread thread = new Thread(() -> download(ctx, listener), "map-download");
+        Thread thread = new Thread(() -> download(ctx, region, listener), "map-download");
         // Daemon: si la app muere inesperadamente, el hilo no bloquea la JVM.
         thread.setDaemon(true);
         thread.start();
@@ -90,9 +84,19 @@ public final class MapDownloader {
     // Lógica interna del hilo de descarga
     // -------------------------------------------------------------------------
 
-    private void download(@NonNull Context ctx, @NonNull MapDownloadListener listener) {
-        File destFile  = getMapFile(ctx);
-        File tmpFile   = new File(destFile.getParent(), MAP_FILENAME + ".tmp");
+    private void download(@NonNull Context ctx,
+                          @NonNull RegionData region,
+                          @NonNull MapDownloadListener listener) {
+        File destFile  = getMapFile(ctx, region);
+        File tmpFile   = new File(destFile.getParent(), region.mapFileName + ".tmp");
+
+        // La carpeta de la región puede no existir todavía en una instalación nueva.
+        File parentDir = destFile.getParentFile();
+        if (parentDir != null && !parentDir.isDirectory() && !parentDir.mkdirs()) {
+            postError(listener, "No se pudo crear el directorio de la región");
+            running = false;
+            return;
+        }
 
         // Limpieza de un intento previo incompleto.
         if (tmpFile.exists()) {
@@ -104,7 +108,7 @@ public final class MapDownloader {
         FileOutputStream outputStream = null;
 
         try {
-            URL url = new URL(MAP_URL);
+            URL url = new URL(region.mapUrl);
             connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);

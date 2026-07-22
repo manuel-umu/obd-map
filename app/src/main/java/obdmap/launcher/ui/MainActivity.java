@@ -33,6 +33,7 @@ import obdmap.launcher.map.MapDownloader;
 import obdmap.launcher.map.MapFileLocator;
 import obdmap.launcher.map.MapManager;
 import obdmap.launcher.map.PositionLayer;
+import obdmap.launcher.map.RegionData;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
@@ -260,7 +261,9 @@ public final class MainActivity extends AppCompatActivity
      * Busca el .map y lo carga. Si no existe, arranca la descarga automatica.
      */
     private void initMapAndGps() {
-        File mapFile = MapFileLocator.findMapFile(this);
+        RegionData region = RegionData.byIdOrDefault(prefsManager.getActiveRegionId());
+
+        File mapFile = MapFileLocator.findMapFile(this, region);
         if (mapFile != null) {
             loadMap(mapFile);
             return;
@@ -274,7 +277,7 @@ public final class MainActivity extends AppCompatActivity
         binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText(getString(R.string.status_downloading_map, 0));
 
-        mapDownloader.start(this, new MapDownloadListener() {
+        mapDownloader.start(this, region, new MapDownloadListener() {
             @Override
             public void onProgress(int percent) {
                 if (binding == null) {

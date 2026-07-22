@@ -20,6 +20,9 @@ import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 
+import obdmap.launcher.map.RegionData;
+import obdmap.launcher.prefs.PrefsManager;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -46,9 +49,6 @@ public final class RoutingManager {
     @IntDef({STATE_IDLE, STATE_LOADING, STATE_READY, STATE_ERROR})
     @Retention(RetentionPolicy.SOURCE)
     public @interface State {}
-
-    private static final String ASSET_ZIP_NAME = "murcia-gh.zip";
-    private static final String GRAPH_DIR_NAME = "murcia-gh";
 
     @Nullable
     private static volatile RoutingManager instance;
@@ -208,6 +208,20 @@ public final class RoutingManager {
         }
     }
 
+    /**
+     * Cierra el grafo y vuelve al estado IDLE
+     */
+    @MainThread
+    public void unload() {
+        GraphHopper gh = hopper;
+        hopper = null;
+        state = STATE_IDLE;
+        lastError = null;
+        if (gh != null) {
+            gh.close();
+        }
+    }
+
     @MainThread
     public void startLoading(@NonNull final Context context,
                              @NonNull final RoutingListener listener) {
@@ -235,11 +249,22 @@ public final class RoutingManager {
     private void loadInBackground(@NonNull Context appContext,
                                   @NonNull final RoutingListener listener) {
         try {
-            final File graphDir = new File(appContext.getFilesDir(), GRAPH_DIR_NAME);
+            PrefsManager prefs = new PrefsManager(appContext);
+            RegionData region = RegionData.byIdOrDefault(prefs.getActiveRegionId());
+            final File graphDir = region.graphDir(appContext);
+            boolean missing  = !graphDir.isDirectory();
+            boolean outdated = !region.dataVersion.equals(prefs.getInstalledDataVersion(region.id));
 
-            if (!graphDir.exists() || !graphDir.isDirectory()) {
-                notifyProgress(listener, "Extrayendo grafo…");
-                extractAsset(appContext, graphDir);
+            if (missing || outdated) {
+                if (region.graphAssetZip == null) {
+                    throw new IOException("La región " + region.id
+                            + " no trae grafo empaquetado");
+                }
+                notifyProgress(listener, "Instalando grafo…");
+                prefs.clearInstalledDataVersion(region.id);
+                deleteRecursively(graphDir);
+                extractAsset(appContext, region.graphAssetZip, graphDir);
+                prefs.setInstalledDataVersion(region.id, region.dataVersion);
             }
 
             notifyProgress(listener, "Cargando grafo…");
@@ -275,6 +300,7 @@ public final class RoutingManager {
     }
 
     private static void extractAsset(@NonNull Context context,
+                                     @NonNull String assetZipName,
                                      @NonNull File destDir) throws IOException {
         if (!destDir.mkdirs() && !destDir.isDirectory()) {
             throw new IOException("No se pudo crear el directorio: " + destDir.getAbsolutePath());
@@ -282,7 +308,7 @@ public final class RoutingManager {
 
         final byte[] buffer = new byte[8192];
 
-        InputStream assetStream = context.getAssets().open(ASSET_ZIP_NAME);
+        InputStream assetStream = context.getAssets().open(assetZipName);
         ZipInputStream zipIn = new ZipInputStream(assetStream);
         try {
             ZipEntry entry;
@@ -325,6 +351,18 @@ public final class RoutingManager {
         } finally {
             out.close();
         }
+    }
+
+    private static void deleteRecursively(@NonNull File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        file.delete();
     }
 
     private void notifyProgress(@NonNull final RoutingListener listener,

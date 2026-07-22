@@ -36,17 +36,17 @@ public final class MapFileLocator {
     }
 
     /**
-     * Punto de entrada principal. Busca el mapa en este orden de prioridad:
-     *   1. El fichero descargado por MapDownloader (directorio privado de la app).
+     * Punto de entrada principal. Busca el mapa de una región en este orden:
+     *   1. El .map instalado en la carpeta de la región (descargado o copiado ahí).
      *   2. El primer .map que el usuario haya copiado a mano en Download/.
      * Devuelve null si no hay ningún .map disponible.
      */
     @Nullable
-    public static File findMapFile(@NonNull Context ctx) {
-        // Primero el mapa descargado automáticamente.
-        File downloaded = MapDownloader.getMapFile(ctx);
-        if (downloaded.isFile()) {
-            return downloaded;
+    public static File findMapFile(@NonNull Context ctx, @NonNull RegionData region) {
+        // Primero el mapa propio de la región.
+        File regionMap = region.mapFile(ctx);
+        if (regionMap.isFile()) {
+            return regionMap;
         }
         // Fallback: .map copiado manualmente por el usuario.
         return findFirstMapFile();
