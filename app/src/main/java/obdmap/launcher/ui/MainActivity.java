@@ -407,45 +407,50 @@ public final class MainActivity extends AppCompatActivity
             hasPrevBearing = true;
         }
 
-        // Por defecto, sin adelanto: la flecha converge al punto real ya snapeado
-        // (parado, sin bearing fiable, o si la predicción no procede).
-        double renderLat = useLat;
-        double renderLon = useLon;
+        double renderLat;
+        double renderLon;
+        boolean hasPrediction = PositionPredictor.predict(useLat, useLon,
+                bearingDegrees, hasBearing, speedMs,
+                effectiveLookaheadMs,
+                PositionPredictor.MAX_LEAD_METERS,
+                predictOut);
 
-        if (currentRoute != null) {
-            // CON ruta: adelanto por tangente y reproyección sobre la polilínea
-            // densa de la ruta. El re-snap sobre geometría densa devuelve el punto
-            // a la vía aunque la tangente se saliera en la curva.
-            boolean hasPrediction = PositionPredictor.predict(useLat, useLon,
-                    bearingDegrees, hasBearing, speedMs,
-                    effectiveLookaheadMs,
-                    PositionPredictor.MAX_LEAD_METERS,
-                    predictOut);
-            if (hasPrediction && RoadSnapper.snapToRoute(currentRoute,
-                    predictOut[0], predictOut[1],
-                    RoadSnapper.MAX_SNAP_METERS, snapOut)) {
+        if (hasPrediction) {
+            // Re-snap del punto predicho: el punto adelantado puede haberse salido
+            // lateralmente de la vía si el bearing GPS tenía error angular.
+            boolean predSnapped = false;
+            if (currentRoute != null) {
+                // Con ruta activa: proyectar sobre la polilínea de la ruta.
+                predSnapped = RoadSnapper.snapToRoute(currentRoute,
+                        predictOut[0], predictOut[1],
+                        RoadSnapper.MAX_SNAP_METERS, snapOut);
+            }
+            if (!predSnapped) {
+                // Sin ruta
+                RoutingManager rmSnap = RoutingManager.getInstance();
+                if (rmSnap.getState() == RoutingManager.STATE_READY
+                        && rmSnap.getHopper() != null) {
+                    predSnapped = RoadSnapper.snapToNetwork(rmSnap.getHopper(),
+                            predictOut[0], predictOut[1],
+                            RoadSnapper.MAX_SNAP_METERS,
+                            bearingDegrees, hasBearing, snapOut);
+                }
+            }
+
+            if (predSnapped) {
+                // Punto predicho y pegado a la vía
                 renderLat = snapOut[0];
                 renderLon = snapOut[1];
+            } else {
+                // El predicho cayó fuera de toda vía (curva cerrada, intersección...):
+                // fallback a la posición real ya snapeada para no pintar fuera de la vía.
+                renderLat = useLat;
+                renderLon = useLon;
             }
-        } else if (hasBearing && speedMs >= PositionPredictor.MIN_PREDICT_SPEED_MS) {
-            // SIN ruta (conducción libre): adelanto SIGUIENDO la geometría de la
-            // carretera en el grafo. Al caminar sobre la propia vía, el punto
-            // adelantado no se sale en las curvas, así que aquí se usa el lookahead
-            // COMPLETO (sin leadScale): eso elimina el retraso que hacía que la
-            // flecha se saliera al girar. Si el grafo no está listo o la vía más
-            // cercana no está alineada con la marcha, se queda en la pos. snapeada.
-            double leadMeters = speedMs * (PositionPredictor.LOOKAHEAD_MS / 1000.0);
-            if (leadMeters > PositionPredictor.MAX_LEAD_METERS) {
-                leadMeters = PositionPredictor.MAX_LEAD_METERS;
-            }
-            RoutingManager rmSnap = RoutingManager.getInstance();
-            if (rmSnap.getState() == RoutingManager.STATE_READY
-                    && rmSnap.getHopper() != null
-                    && RoadSnapper.predictAlongRoad(rmSnap.getHopper(),
-                            latitude, longitude, bearingDegrees, leadMeters, snapOut)) {
-                renderLat = snapOut[0];
-                renderLon = snapOut[1];
-            }
+        } else {
+            // Parado o sin bearing fiable: sin lead, la flecha converge al punto real.
+            renderLat = useLat;
+            renderLon = useLon;
         }
 
         // Marcador y viewport reciben el MISMO objetivo de render.
