@@ -23,8 +23,8 @@ android {
         // algo grande (una fase); el último, en cada commit. versionCode: entero
         // monotónico independiente, +1 por release; es el que compara el updater OTA
         // y el que va en el tag de GitHub.
-        versionCode 7
-        versionName "0.1.6"
+        versionCode 8
+        versionName "0.1.7"
 
         // GraphHopper core supera el límite de 64K métodos en un solo dex;
         // multidex es obligatorio a partir de esta dependencia.
