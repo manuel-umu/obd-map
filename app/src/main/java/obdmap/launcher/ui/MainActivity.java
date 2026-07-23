@@ -102,6 +102,9 @@ public final class MainActivity extends AppCompatActivity
     // Buffer para el resultado de la predicción de posición
     private final double[] predictOut = new double[2];
 
+    // Buffer para el diagnóstico de snap (lat pegada, lon pegada, dist a arista)
+    private final double[] diagOut = new double[3];
+
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
 
@@ -467,6 +470,8 @@ public final class MainActivity extends AppCompatActivity
                     hasBearing, speedMs, autoCenter);
         }
 
+        updateDebugOverlay(latitude, longitude, useLat, useLon, renderLat, renderLon);
+
         // Actualizar el tracker de navegación y el HUD de maniobra
         if (currentRoute != null) {
             navigationTracker.update(useLat, useLon);
@@ -492,6 +497,39 @@ public final class MainActivity extends AppCompatActivity
 
         // Intentar calcular la ruta si hay destino y el grafo está disponible.
         maybeCalculateRoute();
+    }
+    private void updateDebugOverlay(double rawLat, double rawLon,
+                                    double snapLat, double snapLon,
+                                    double renderLat, double renderLon) {
+        if (binding == null) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder(160);
+        sb.append(String.format(Locale.US, "GPS %.6f %.6f\n", rawLat, rawLon));
+        sb.append(String.format(Locale.US, "Peg %.6f %.6f\n", snapLat, snapLon));
+        sb.append(String.format(Locale.US, "Pin %.6f %.6f\n", renderLat, renderLon));
+
+        RoutingManager rm = RoutingManager.getInstance();
+        if (rm.getState() == RoutingManager.STATE_READY && rm.getHopper() != null
+                && RoadSnapper.snapDiagnostic(rm.getHopper(), rawLat, rawLon, diagOut)) {
+            sb.append(String.format(Locale.US, "arista %.1f m\n", diagOut[2]));
+        } else {
+            sb.append("arista  -- (sin grafo)\n");
+        }
+
+        double desfPeg = metersBetween(rawLat, rawLon, snapLat, snapLon);
+        double desfPin = metersBetween(rawLat, rawLon, renderLat, renderLon);
+        sb.append(String.format(Locale.US, "desf peg %.1f  pin %.1f", desfPeg, desfPin));
+
+        binding.debugOverlay.setText(sb.toString());
+    }
+
+    /** Distancia aproximada en metros entre dos coordenadas (equirectangular). */
+    private static double metersBetween(double lat1, double lon1,
+                                        double lat2, double lon2) {
+        double dLat = (lat2 - lat1) * METERS_PER_DEG;
+        double dLon = (lon2 - lon1) * METERS_PER_DEG * Math.cos(Math.toRadians(lat1));
+        return Math.sqrt(dLat * dLat + dLon * dLon);
     }
 
     @Override

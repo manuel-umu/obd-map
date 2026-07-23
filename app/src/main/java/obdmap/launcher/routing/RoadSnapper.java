@@ -232,4 +232,25 @@ public final class RoadSnapper {
         out[1] = snapped.lon;
         return true;
     }
+
+    public static boolean snapDiagnostic(@Nullable GraphHopper hopper,
+                                         double lat, double lon,
+                                         @NonNull double[] out) {
+        if (hopper == null) {
+            return false;
+        }
+        LocationIndex idx = hopper.getLocationIndex();
+        if (idx == null) {
+            return false;
+        }
+        QueryResult qr = idx.findClosest(lat, lon, EdgeFilter.ALL_EDGES);
+        if (!qr.isValid()) {
+            return false;
+        }
+        GHPoint3D sp = qr.getSnappedPoint();
+        out[0] = sp.lat;
+        out[1] = sp.lon;
+        out[2] = qr.getQueryDistance();
+        return true;
+    }
 }
