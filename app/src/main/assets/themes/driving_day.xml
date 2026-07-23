@@ -86,7 +86,16 @@
     <style-line cap="butt" fix="true" id="fix" width="1.0" />
 
     <!--residential-->
-    <style-line id="residential" stroke="#ffffff" width="1.3" />
+    <!-- Gris cálido en vez de blanco: sobre el fondo crema (#f5f3ef) el blanco
+         se confundía con el fondo. El gris mantiene estas vías como "menores"
+         (más claras que el amarillo de secondary/primary) pero legibles.
+
+         Ancho base 1.0 (antes 1.3): en VTM, cuando un estilo hereda con use=""
+         el width se SUMA al del base (no lo sustituye). tertiary hereda de aquí
+         con +0.2, así que con base 1.3 salía 1.5 — MÁS gruesa que secondary
+         (1.4), invirtiendo la jerarquía. Con base 1.0, tertiary=1.2 < secondary
+         1.4 < primary 1.5, y residential/service quedan por debajo. -->
+    <style-line id="residential" stroke="#c2beb4" width="1.0" />
     <style-line cap="butt" id="residential:bridge" use="residential" />
 
     <style-line id="pedestrian" use="residential" width="-0.4" />
@@ -96,7 +105,7 @@
     <style-line id="trunk" stroke="#fedb52" width="1.6" />
     <style-line id="primary:z11" stroke="#f4d26e" width="1.5" />
     <style-line id="secondary:z11" use="primary:z11" width="-0.1" />
-    <style-line id="tertiary" stroke="#fefefa" use="residential" width="0.2" />
+    <style-line id="tertiary" stroke="#b6b1a6" use="residential" width="0.2" />
     <style-line id="construction" stroke="#e0e0e0" width="1.2" />
     <style-line id="highway-service" use="residential" width="-0.6" />
 
