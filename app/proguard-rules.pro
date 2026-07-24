@@ -79,7 +79,14 @@
 
 # ObdDebugActivity también referenciada desde el Manifest.
 -keep class obdmap.launcher.ui.ObdDebugActivity { *; }
+-keep class com.graphhopper.** { *; }
+-keep interface com.graphhopper.** { *; }
+-keeppackagenames com.graphhopper.**
+-dontwarn com.graphhopper.**
 
-# -----------------------------------------------------------------------------
-# Reglas de GraphHopper      — Se añadirán en la Fase 4.
-# -----------------------------------------------------------------------------
+# Dependencias transitivas de GraphHopper (colecciones primitivas y logging).
+# hppc instancia clases por reflexión; el resto solo necesita silenciar avisos.
+-keep class com.carrotsearch.hppc.** { *; }
+-dontwarn com.carrotsearch.hppc.**
+-dontwarn org.slf4j.**
+-dontwarn org.locationtech.jts.**

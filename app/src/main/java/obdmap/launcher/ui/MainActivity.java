@@ -343,6 +343,27 @@ public final class MainActivity extends AppCompatActivity
             binding.statusText.setText(R.string.status_no_permissions);
         }
         applyDayNightToUi();
+
+        // Precargar el grafo para que el snap-to-road funcione en conducción libre
+        preloadGraphForSnapping();
+    }
+
+    /**
+     * Arranca la carga del grafo de GraphHopper en segundo plano
+     */
+    private void preloadGraphForSnapping() {
+        RoutingManager.getInstance().startLoading(this, new RoutingManager.RoutingListener() {
+            @Override
+            public void onRoutingReady() {
+            }
+
+            @Override
+            public void onRoutingError(@NonNull String message) {
+            }
+            @Override
+            public void onRoutingProgress(@NonNull String status) {
+            }
+        });
     }
 
     @Override
