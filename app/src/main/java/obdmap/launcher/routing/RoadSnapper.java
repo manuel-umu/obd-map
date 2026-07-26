@@ -7,9 +7,6 @@ import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.QueryResult;
-import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.FetchMode;
-import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint3D;
 
 /**
@@ -38,6 +35,12 @@ public final class RoadSnapper {
      * Metros por grado de latitud
      */
     private static final double METERS_PER_DEG = 111320.0;
+
+    /**
+     * Filtro de rumbo
+     */
+    private static final HeadingEdgeFilter headingFilter =
+            new HeadingEdgeFilter(MAX_HEADING_DIFF_DEG);
 
     private RoadSnapper() {}
 
@@ -161,7 +164,13 @@ public final class RoadSnapper {
             return false;
         }
 
-        QueryResult qr = idx.findClosest(lat, lon, EdgeFilter.ALL_EDGES);
+        EdgeFilter filter = EdgeFilter.ALL_EDGES;
+        if (hasBearing) {
+            headingFilter.set(lat, lon, bearingDeg);
+            filter = headingFilter;
+        }
+
+        QueryResult qr = idx.findClosest(lat, lon, filter);
 
         if (!qr.isValid()) {
             return false;
@@ -170,61 +179,6 @@ public final class RoadSnapper {
         double distM = qr.getQueryDistance();
         if (distM > maxMeters) {
             return false;
-        }
-
-        // Filtro de rumbo: solo se aplica cuando el GPS entrega un bearing fiable.
-        if (hasBearing) {
-            EdgeIteratorState edge = qr.getClosestEdge();
-            if (edge != null) {
-                PointList geom = edge.fetchWayGeometry(FetchMode.ALL);
-                if (geom.size() < 2) {
-                    GHPoint3D pt = qr.getSnappedPoint();
-                    out[0] = pt.lat;
-                    out[1] = pt.lon;
-                    return true;
-                }
-                int segStart = qr.getWayIndex();
-                // En snaps de torre/pilar wayIndex apunta al propio vértice; el
-                // segmento hacia delante arranca ahí. Acotar al último segmento.
-                if (segStart > geom.size() - 2) {
-                    segStart = geom.size() - 2;
-                }
-                if (segStart < 0) {
-                    segStart = 0;
-                }
-                double baseLat = geom.getLat(segStart);
-                double baseLon = geom.getLon(segStart);
-                double adjLat  = geom.getLat(segStart + 1);
-                double adjLon  = geom.getLon(segStart + 1);
-
-                // atan2 con (dLon * cos(lat), dLat) da el azimut en coordenadas esféricas.
-                double cosLat   = Math.cos(Math.toRadians(lat));
-                double dLat     = adjLat - baseLat;
-                double dLon     = (adjLon - baseLon) * cosLat;
-                float  edgeAz   = (float) (Math.toDegrees(Math.atan2(dLon, dLat)));
-                if (edgeAz < 0f) {
-                    edgeAz += 360f;
-                }
-
-                // Diferencia angular normalizada al rango [0, 180].
-                // Una carretera tiene dos sentidos, así que comparamos también con el
-                // sentido inverso (edgeAz + 180) eligiendo la diferencia más pequeña.
-                float diff = Math.abs(bearingDeg - edgeAz);
-                if (diff > 180f) {
-                    diff = 360f - diff;
-                }
-                // diff ahora está en [0, 180]; si la arista va en sentido contrario
-                // la diferencia superará 90°. Normalizamos al rango [0, 90] para
-                // evaluar alineación en cualquier sentido:
-                if (diff > 90f) {
-                    diff = 180f - diff;
-                }
-
-                if (diff > MAX_HEADING_DIFF_DEG) {
-                    // La arista más cercana no está alineada con el rumbo: descartamos
-                    return false;
-                }
-            }
         }
 
         GHPoint3D snapped = qr.getSnappedPoint();

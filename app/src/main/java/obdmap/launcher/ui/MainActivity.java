@@ -485,6 +485,7 @@ public final class MainActivity extends AppCompatActivity
         // es imprescindible que ambos apunten al mismo punto para no derivar.
         if (positionLayer != null) {
             positionLayer.setTargetPosition(renderLat, renderLon);
+            positionLayer.setBearing(bearingDegrees, hasBearing, speedMs);
         }
         if (mapManager != null) {
             mapManager.updateCar(renderLat, renderLon, bearingDegrees,

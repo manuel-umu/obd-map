@@ -1,6 +1,7 @@
 package obdmap.launcher.map;
 
 import android.content.res.AssetManager;
+import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 
@@ -58,8 +59,15 @@ public final class MapManager {
     // Velocidad mínima en m/s para rotar
     private static final float MIN_SPEED_FOR_BEARING_MS = 0.5f;
 
-    // Duración de la animación de posición/rumbo en milisegundos.
-    private static final long ANIM_DURATION_MS = 750L;
+    // Duración de la animación de posición/rumbo
+    private static final long ANIM_MIN_MS = 250L;
+    private static final long ANIM_MAX_MS = 1500L;
+
+    // Duración por defecto para el primer fix, cuando aún no hay delta medible.
+    private static final long ANIM_DEFAULT_MS = 700L;
+
+    // Duración usada en las animaciones que no vienen de un fix GPS (recentrar).
+    private static final long ANIM_RECENTER_MS = 500L;
 
     // Nombre del archivo de tema de día dentro de assets/themes/
     private static final String THEME_DAY   = "themes/driving_day.xml";
@@ -84,6 +92,9 @@ public final class MapManager {
 
     // Velocidad suavizada (m/s) que alimenta el auto-zoom, para que no tirite.
     private float smoothedSpeedMs = 0f;
+
+    // Instante del último updateCar, para medir el periodo real del GPS.
+    private long lastUpdateMs = 0L;
 
     /**
      * Engancha el manager al MapView ya inflado, abre el .map y añade las capas.
@@ -171,6 +182,20 @@ public final class MapManager {
             lastBearing = bearing;
         }
 
+        long nowMs = SystemClock.elapsedRealtime();
+        long animMs;
+        if (lastUpdateMs == 0L) {
+            animMs = ANIM_DEFAULT_MS;
+        } else {
+            animMs = nowMs - lastUpdateMs;
+            if (animMs < ANIM_MIN_MS) {
+                animMs = ANIM_MIN_MS;
+            } else if (animMs > ANIM_MAX_MS) {
+                animMs = ANIM_MAX_MS;
+            }
+        }
+        lastUpdateMs = nowMs;
+
         if (!autoCenter) {
             return;
         }
@@ -208,7 +233,7 @@ public final class MapManager {
         targetPos.setTilt(DRIVE_TILT);
 
         // animateTo reemplaza cualquier animación en curso
-        map.animator().animateTo(ANIM_DURATION_MS, targetPos);
+        map.animator().animateTo(animMs, targetPos);
     }
 
     /**
@@ -255,7 +280,7 @@ public final class MapManager {
         // Al recentrar manualmente reseteamos la rotación a norte arriba
         targetPos.setBearing(0f);
 
-        map.animator().animateTo(ANIM_DURATION_MS, targetPos);
+        map.animator().animateTo(ANIM_RECENTER_MS, targetPos);
     }
 
     /**

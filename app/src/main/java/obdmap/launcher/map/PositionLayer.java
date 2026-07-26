@@ -24,13 +24,27 @@ import java.util.List;
  */
 public final class PositionLayer implements Map.UpdateListener {
 
-    // Duración mínima y máxima de la interpolación entre fixes GPS
+    /** Duración mínima y máxima de la interpolación entre fixes GPS */
     private static final long MIN_INTERP_MS = 400L;
     private static final long MAX_INTERP_MS = 2000L;
 
+    /**
+     * Velocidad mínima para hacer caso al rumbo del GPS
+     */
+    private static final float MIN_SPEED_FOR_BEARING_MS = 0.5f;
+
+    /** Signo de la rotación del símbolo */
+    private static final float ROTATION_SIGN = 1f;
     private final Map vtmMap;
     private final ItemizedLayer markerLayer;
     private final MarkerItem carMarker;
+
+    /** Símbolo del marcador; se le ajusta la rotación frame a frame. */
+    private final MarkerSymbol carSymbol;
+
+    /** Último rumbo GPS fiable, en grados [0, 360). */
+    private float lastBearingDeg = 0f;
+    private boolean hasBearingValue = false;
 
     // Posición de ORIGEN de la interpolación en curso
     private double fromX = Double.NaN;
@@ -68,6 +82,8 @@ public final class PositionLayer implements Map.UpdateListener {
         // billboard=true: el símbolo siempre mira a cámara (ignora la rotación del mapa).
         MarkerSymbol symbol = new MarkerSymbol(bitmap,
                 MarkerSymbol.HotspotPlace.CENTER, true);
+
+        carSymbol = symbol;
 
         // Posición inicial fuera de rango: no se ve hasta el primer fix GPS.
         carMarker = new MarkerItem("car", "", new GeoPoint(0.0, 0.0));
@@ -142,6 +158,20 @@ public final class PositionLayer implements Map.UpdateListener {
     }
 
     /**
+     * Nuevo rumbo del GPS. La flecha se orienta con él en cada frame
+     *
+     * @param bearingDeg rumbo en grados [0, 360)
+     * @param hasBearing true si el fix trae rumbo válido
+     * @param speedMs    velocidad en m/s; parados el rumbo no es fiable
+     */
+    public void setBearing(float bearingDeg, boolean hasBearing, float speedMs) {
+        if (hasBearing && speedMs >= MIN_SPEED_FOR_BEARING_MS) {
+            lastBearingDeg  = bearingDeg;
+            hasBearingValue = true;
+        }
+    }
+
+    /**
      * Actualiza el flag de auto-centrado.
      *
      * @param enabled true si el mapa sigue al coche
@@ -189,6 +219,16 @@ public final class PositionLayer implements Map.UpdateListener {
         }
 
         carMarker.geoPoint = new GeoPoint(markerLat, markerLon);
+
+        // Orientación de la flecha en pantalla
+        if (hasBearingValue) {
+            float screenAngle = lastBearingDeg + mapPosition.bearing;
+            screenAngle %= 360f;
+            if (screenAngle < 0f) {
+                screenAngle += 360f;
+            }
+            carSymbol.setRotation(ROTATION_SIGN * screenAngle);
+        }
 
         // Notifica al MarkerRenderer que los InternalItem.px/py han cambiado.
         markerLayer.populate();
