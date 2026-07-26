@@ -155,7 +155,8 @@
         android:fontFamily="monospace"
         android:padding="12dp"
         android:textColor="#FF00E676"
-        android:textSize="25sp" />
+        android:textSize="25sp"
+        android:visibility="gone" />
 
     <!--
         Badge circular de velocidad GPS (esquina inferior izquierda, siempre visible).
@@ -183,31 +184,17 @@
         android:textSize="18sp"
         android:visibility="gone" />
 
-    <!--
-        Botón "Destino" centrado en la parte inferior.
-        Es el único botón que queda en la barra inferior central tras eliminar
-        "Ajustes OBD" y "Debug OBD" (que ahora viven dentro de la pantalla de Ajustes).
-    -->
-    <Button
-        android:id="@+id/openDestinationButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:background="@color/primary"
-        android:minHeight="72dp"
-        android:paddingStart="28dp"
-        android:paddingEnd="28dp"
-        android:text="@string/open_destination_button"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp" />
+    <!-- Capa transparente que cierra el panel de destino al tocar fuera de él. -->
+    <View
+        android:id="@+id/destConfirmScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
-    <!--
-        Panel de confirmación de destino por long-press.
-        Aparece centrado en la parte inferior cuando el usuario hace long-press
-        sobre el mapa. Por defecto GONE; se hace VISIBLE desde MainActivity.
-        El minHeight grande garantiza zona táctil cómoda en el coche.
-    -->
+    <!-- Panel de confirmación de destino por long-press. -->
     <LinearLayout
         android:id="@+id/destConfirmPanel"
         android:layout_width="wrap_content"
@@ -310,22 +297,41 @@
 
     </LinearLayout>
 
-    <!--
-        Botón "Ajustes" de la app (esquina inferior derecha). Desde él se accede
-        a la selección del ELM327, ajustes del sistema, debug e información.
-    -->
-    <Button
-        android:id="@+id/appSettingsButton"
+    <!-- Fila inferior derecha: "Cancelar ruta" (solo con ruta activa) y "Ajustes". -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:background="@drawable/btn_primary"
-        android:minHeight="72dp"
-        android:paddingStart="28dp"
-        android:paddingEnd="28dp"
-        android:text="@string/app_settings_button"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/cancelRouteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/btn_surface"
+            android:minHeight="72dp"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/cancel_route_button"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/appSettingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/btn_primary"
+            android:minHeight="72dp"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/app_settings_button"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp" />
+
+    </LinearLayout>
 
 </FrameLayout>

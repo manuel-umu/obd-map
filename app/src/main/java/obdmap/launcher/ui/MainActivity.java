@@ -105,6 +105,9 @@ public final class MainActivity extends AppCompatActivity
     // Buffer para el diagnóstico de snap (lat pegada, lon pegada, dist a arista)
     private final double[] diagOut = new double[3];
 
+    // Estado del overlay de diagnóstico, leído de prefs en cada onResume.
+    private boolean debugOverlayEnabled = false;
+
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
 
@@ -171,10 +174,10 @@ public final class MainActivity extends AppCompatActivity
 
         binding.appSettingsButton.setOnClickListener(
                 v -> startActivity(new Intent(this, SettingsActivity.class)));
-        binding.openDestinationButton.setOnClickListener(
-                v -> startActivity(new Intent(this, DestinationActivity.class)));
         binding.destConfirmGoButton.setOnClickListener(v -> confirmPickedDestination());
         binding.destConfirmCancelButton.setOnClickListener(v -> cancelPickedDestination());
+        binding.destConfirmScrim.setOnClickListener(v -> cancelPickedDestination());
+        binding.cancelRouteButton.setOnClickListener(v -> cancelActiveRoute());
         binding.dayNightToggleButton.setOnClickListener(v -> toggleDayNight());
         binding.recenterButton.setOnClickListener(v -> recenterOnPosition());
 
@@ -523,7 +526,7 @@ public final class MainActivity extends AppCompatActivity
     private void updateDebugOverlay(double rawLat, double rawLon,
                                     double snapLat, double snapLon,
                                     double renderLat, double renderLon) {
-        if (binding == null) {
+        if (binding == null || !debugOverlayEnabled) {
             return;
         }
         StringBuilder sb = new StringBuilder(160);
@@ -544,6 +547,15 @@ public final class MainActivity extends AppCompatActivity
         sb.append(String.format(Locale.US, "desf peg %.1f  pin %.1f", desfPeg, desfPin));
 
         binding.debugOverlay.setText(sb.toString());
+    }
+
+    /** Sincroniza el overlay de diagnóstico con la preferencia de Ajustes. */
+    private void applyDebugOverlayPref() {
+        debugOverlayEnabled = prefsManager.isDebugOverlayEnabled();
+        if (binding != null) {
+            binding.debugOverlay.setVisibility(
+                    debugOverlayEnabled ? View.VISIBLE : View.GONE);
+        }
     }
 
     /** Distancia aproximada en metros entre dos coordenadas (equirectangular). */
@@ -634,6 +646,7 @@ public final class MainActivity extends AppCompatActivity
             }
         }
         maybeStartObdService();
+        applyDebugOverlayPref();
 
         // Comprobación de actualización OTA
         updateManager.checkOnStartup(this);
@@ -886,6 +899,7 @@ public final class MainActivity extends AppCompatActivity
                         }
                         currentRoute = route;
                         navigationTracker.setRoute(currentRoute);
+                        updateCancelRouteButton();
 
                         // Dibujar la polilínea de la ruta sobre el mapa VTM.
                         if (mapManager != null) {
@@ -951,6 +965,8 @@ public final class MainActivity extends AppCompatActivity
         if (binding == null) {
             return;
         }
+
+        updateCancelRouteButton();
 
         // --- Panel de maniobra superior ---
         boolean hasManuever = (navigationTracker.currentInstructionIndex >= 0
@@ -1037,6 +1053,7 @@ public final class MainActivity extends AppCompatActivity
         }
         binding.navManeuverPanel.setVisibility(View.GONE);
         binding.navSummaryBar.setVisibility(View.GONE);
+        updateCancelRouteButton();
         lastNavSign = Integer.MIN_VALUE;
         lastNavStreet = null;
         lastNavDistance = null;
@@ -1113,6 +1130,7 @@ public final class MainActivity extends AppCompatActivity
             binding.destConfirmText.setText(R.string.dest_confirm_no_gps);
         }
 
+        binding.destConfirmScrim.setVisibility(View.VISIBLE);
         binding.destConfirmPanel.setVisibility(View.VISIBLE);
     }
 
@@ -1123,13 +1141,13 @@ public final class MainActivity extends AppCompatActivity
         if (binding == null || Double.isNaN(pendingPickLat) || Double.isNaN(pendingPickLon)) {
             return;
         }
-        // Reutiliza exactamente el mismo setter que usa DestinationActivity.
         prefsManager.setDestination((float) pendingPickLat, (float) pendingPickLon);
 
         // Resetear el cache para forzar el recálculo con el nuevo destino.
         lastCalculatedDestLat = Float.NaN;
         lastCalculatedDestLon = Float.NaN;
 
+        binding.destConfirmScrim.setVisibility(View.GONE);
         binding.destConfirmPanel.setVisibility(View.GONE);
 
         // Lanzar el cálculo reutilizando el pipeline completo.
@@ -1149,6 +1167,30 @@ public final class MainActivity extends AppCompatActivity
         if (destinationPickerLayer != null) {
             destinationPickerLayer.hidePin();
         }
+        binding.destConfirmScrim.setVisibility(View.GONE);
         binding.destConfirmPanel.setVisibility(View.GONE);
+    }
+
+    /** Borra el destino guardado y retira la ruta y el pin del mapa. */
+    private void cancelActiveRoute() {
+        prefsManager.clearDestination();
+        lastCalculatedDestLat = Float.NaN;
+        lastCalculatedDestLon = Float.NaN;
+        pendingPickLat = Double.NaN;
+        pendingPickLon = Double.NaN;
+        if (destinationPickerLayer != null) {
+            destinationPickerLayer.hidePin();
+        }
+        // maybeCalculateRoute limpia ruta, tracker, voz y HUD al no haber destino.
+        maybeCalculateRoute();
+    }
+
+    /** Visibilidad del botón "Cancelar ruta" según haya ruta activa. */
+    private void updateCancelRouteButton() {
+        if (binding == null) {
+            return;
+        }
+        binding.cancelRouteButton.setVisibility(
+                currentRoute != null ? View.VISIBLE : View.GONE);
     }
 }

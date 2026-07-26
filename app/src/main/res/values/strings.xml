@@ -10,6 +10,9 @@
     <!-- Botón que abre la pantalla de Ajustes de la app (esquina inferior derecha). -->
     <string name="open_app_settings_button">Ajustes OBD</string>
     <string name="app_settings_button">Ajustes</string>
+    <string name="cancel_route_button">Cancelar ruta</string>
+    <string name="settings_debug_overlay_on">Debug GPS: ON</string>
+    <string name="settings_debug_overlay_off">Debug GPS: OFF</string>
 
     <!-- Botón dentro de la pantalla de Ajustes para acceder al Debug OBD. -->
     <string name="settings_open_obd_debug">Debug OBD</string>
@@ -113,19 +116,6 @@
     <string name="debug_reset_avg_button">Reiniciar medio</string>
     <!-- %1$.1f = valor float con 1 decimal -->
     <string name="debug_float_format">%1$.1f</string>
-
-    <!-- Pantalla de destino -->
-    <string name="title_destination">Fijar destino</string>
-    <string name="hint_latitude">Latitud (ej: 37.9922)</string>
-    <string name="hint_longitude">Longitud (ej: -1.1307)</string>
-    <string name="btn_set_destination">Fijar destino</string>
-    <string name="btn_cancel">Cancelar</string>
-    <string name="btn_clear_destination">Borrar destino</string>
-    <string name="toast_destination_set">Destino fijado</string>
-    <string name="toast_destination_cleared">Destino borrado</string>
-    <string name="toast_invalid_coordinates">Coordenadas no válidas</string>
-    <!-- Botón en MainActivity para abrir la pantalla de destino. -->
-    <string name="open_destination_button">Destino</string>
 
     <!-- Ruta calculada -->
     <!-- %1$s = distancia en km (p. ej. "12.3"), %2$s = tiempo en minutos (p. ej. "18"). -->

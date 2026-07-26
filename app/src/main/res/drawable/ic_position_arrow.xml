@@ -1,31 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Flecha de posición direccional. La punta apunta hacia arriba (norte = 0°).
-    La rotación según el rumbo se aplica en PositionLayer via Matrix, no aquí.
-
-    Tres capas para que resalte sobre cualquier fondo del mapa: un contorno
-    oscuro (da contraste contra el fondo claro del modo día, donde un borde
-    blanco se perdía), un halo blanco intermedio y el cuerpo azul.
+    Flecha de posición del coche, punta hacia arriba (norte = 0°).
+    Tres capas: contorno oscuro, halo blanco y cuerpo azul.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="58dp"
-    android:height="58dp"
+    android:width="50dp"
+    android:height="50dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
 
     <!-- Contorno oscuro exterior -->
     <path
         android:fillColor="#FF0D2137"
-        android:pathData="M24,1 L37.5,41 L24,34.5 L10.5,41 Z" />
+        android:pathData="M24,7 L43,39 L24,31.5 L5,39 Z" />
 
     <!-- Halo blanco intermedio -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M24,4 L35,39.5 L24,33 L13,39.5 Z" />
+        android:pathData="M24,10.5 L39.5,37.5 L24,30 L8.5,37.5 Z" />
 
     <!-- Cuerpo azul de la flecha -->
     <path
         android:fillColor="#FF1976D2"
-        android:pathData="M24,7 L32.5,37 L24,30.5 L15.5,37 Z" />
+        android:pathData="M24,14 L36,36 L24,28.5 L12,36 Z" />
 
 </vector>

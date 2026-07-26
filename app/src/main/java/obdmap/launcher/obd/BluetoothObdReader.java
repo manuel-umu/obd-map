@@ -478,15 +478,7 @@ public final class BluetoothObdReader {
     }
 
     /**
-     * Saca los bytes de datos de la respuesta y deja la decodificación en manos
-     * de ObdPids.decode(), que es donde viven todas las fórmulas y unidades.
-     *
-     * No basta con coger bytes[2]/bytes[3] a ciegas: hay que validar la cabecera
-     * "41 <pid>" y localizar los datos RESPECTO a ella. De lo contrario se
-     * decodifican como valores reales respuestas que no lo son —negativas
-     * (0x7F...), tramas de otro PID que llegan desfasadas, restos de "SEARCHING"
-     * o ruido de línea— y salen números irreales (RPM fantasma con el coche
-     * parado, cientos de L/h de consumo, saltos bruscos).
+     * Valor decodificado de la respuesta, exigiendo la cabecera "41 <pid>".
      *
      * @return valor decodificado, o Integer.MIN_VALUE si la respuesta no vale
      */

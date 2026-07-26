@@ -113,12 +113,6 @@
             android:name=".service.ObdService"
             android:exported="false" />
 
-        <!-- Pantalla de introducción manual del destino de ruta. -->
-        <activity
-            android:name=".ui.DestinationActivity"
-            android:exported="false"
-            android:screenOrientation="landscape" />
-
         <!--
             FileProvider del auto-updater OTA: expone el APK descargado
             al instalador del sistema con un content:// URI. Obligatorio en API 24+

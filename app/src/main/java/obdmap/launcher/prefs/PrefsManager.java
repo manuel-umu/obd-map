@@ -35,6 +35,9 @@ public final class PrefsManager {
     // Preferencia de modo noche (true = noche, false = día).
     private static final String KEY_NIGHT_MODE = "night_mode";
 
+    // Overlay de diagnóstico de snap sobre el mapa (true = visible).
+    private static final String KEY_DEBUG_OVERLAY = "debug_overlay";
+
     // Identificador de la región de datos offline activa (ver RegionData).
     private static final String KEY_ACTIVE_REGION = "active_region";
 
@@ -163,6 +166,17 @@ public final class PrefsManager {
     @SuppressLint("ApplySharedPref")
     public void clearInstalledDataVersion(@NonNull String regionId) {
         prefs.edit().remove(KEY_DATA_VERSION_PREFIX + regionId).commit();
+    }
+
+    // ---------------------------------------------------------------------
+    // Overlay de diagnóstico de snap
+    // ---------------------------------------------------------------------
+    public boolean isDebugOverlayEnabled() {
+        return prefs.getBoolean(KEY_DEBUG_OVERLAY, false);
+    }
+
+    public void setDebugOverlayEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DEBUG_OVERLAY, enabled).apply();
     }
 
     // ---------------------------------------------------------------------

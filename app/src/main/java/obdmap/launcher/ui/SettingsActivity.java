@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivitySettingsBinding;
+import obdmap.launcher.prefs.PrefsManager;
 
 /**
  * Pantalla de Ajustes: menú de nivel superior. Solo navega a las distintas
@@ -20,12 +21,17 @@ import obdmap.launcher.databinding.ActivitySettingsBinding;
 public final class SettingsActivity extends AppCompatActivity {
 
     private ActivitySettingsBinding binding;
+    private PrefsManager prefsManager;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivitySettingsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        prefsManager = new PrefsManager(this);
+        updateDebugOverlayLabel();
+        binding.btnToggleDebugOverlay.setOnClickListener(v -> toggleDebugOverlay());
 
         binding.btnBack.setOnClickListener(v -> finish());
         binding.btnBluetooth.setOnClickListener(
@@ -41,6 +47,18 @@ public final class SettingsActivity extends AppCompatActivity {
     protected void onDestroy() {
         binding = null;
         super.onDestroy();
+    }
+
+    private void toggleDebugOverlay() {
+        prefsManager.setDebugOverlayEnabled(!prefsManager.isDebugOverlayEnabled());
+        updateDebugOverlayLabel();
+    }
+
+    /** Pone en el botón el estado actual del overlay. */
+    private void updateDebugOverlayLabel() {
+        binding.btnToggleDebugOverlay.setText(prefsManager.isDebugOverlayEnabled()
+                ? R.string.settings_debug_overlay_on
+                : R.string.settings_debug_overlay_off);
     }
 
     /** Abre los Ajustes del sistema; si no existe la app, avisa por Toast. */
