@@ -10,37 +10,15 @@ import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.util.shapes.GHPoint3D;
 
 /**
- * Proyecta la posición GPS sobre la carretera más cercana.
+ * Proyección de la posición GPS sobre la polilínea de una ruta activa.
  */
 public final class RoadSnapper {
 
-    /**
-     * Umbral máximo de snap en metros. Subido de 35 a 55 para que el snap
-     * se aplique con más frecuencia cuando el GPS tiene deriva habitual en coche.
-     * Bajar si hay falsos snaps en zonas con vías muy próximas.
-     */
+    /** Umbral máximo de snap en metros */
     public static final double MAX_SNAP_METERS = 55.0;
 
-    /**
-     * Diferencia angular máxima entre el rumbo del GPS y el azimut de la arista
-     * para considerar que el vehículo circula por ella. Se evalúa en ambos
-     * sentidos de circulación (directa e inversa), por eso el umbral puede ser
-     * de 45° y aún así cubre el 100% de las orientaciones válidas con margen.
-     * Valor de 45° es un equilibrio entre tolerancia a GPS impreciso y rechazo
-     * de vías paralelas/perpendiculares.
-     */
-    private static final float MAX_HEADING_DIFF_DEG = 45.0f;
-
-    /**
-     * Metros por grado de latitud
-     */
+    /** Metros por grado de latitud */
     private static final double METERS_PER_DEG = 111320.0;
-
-    /**
-     * Filtro de rumbo
-     */
-    private static final HeadingEdgeFilter headingFilter =
-            new HeadingEdgeFilter(MAX_HEADING_DIFF_DEG);
 
     private RoadSnapper() {}
 
@@ -130,61 +108,6 @@ public final class RoadSnapper {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Pega el punto (lat, lon) a la carretera más cercana, sin filtro de rumbo.
-     *
-     * @param hopper    instancia de GraphHopper ya cargada
-     * @param lat       latitud GPS cruda
-     * @param lon       longitud GPS cruda
-     * @param maxMeters distancia máxima en metros para considerar el snap válido
-     * @param out       array de tamaño 2; out[0]=lat, out[1]=lon del punto pegado
-     * @return true si hay un punto de red dentro del umbral y se escribió en el array out
-     */
-    public static boolean snapToNetwork(@Nullable GraphHopper hopper,
-                                        double lat, double lon,
-                                        double maxMeters,
-                                        @NonNull double[] out) {
-        return snapToNetwork(hopper, lat, lon, maxMeters, 0f, false, out);
-    }
-
-    public static boolean snapToNetwork(@Nullable GraphHopper hopper,
-                                        double lat, double lon,
-                                        double maxMeters,
-                                        float bearingDeg,
-                                        boolean hasBearing,
-                                        @NonNull double[] out) {
-        if (hopper == null) {
-            return false;
-        }
-
-        LocationIndex idx = hopper.getLocationIndex();
-        if (idx == null) {
-            return false;
-        }
-
-        EdgeFilter filter = EdgeFilter.ALL_EDGES;
-        if (hasBearing) {
-            headingFilter.set(lat, lon, bearingDeg);
-            filter = headingFilter;
-        }
-
-        QueryResult qr = idx.findClosest(lat, lon, filter);
-
-        if (!qr.isValid()) {
-            return false;
-        }
-
-        double distM = qr.getQueryDistance();
-        if (distM > maxMeters) {
-            return false;
-        }
-
-        GHPoint3D snapped = qr.getSnappedPoint();
-        out[0] = snapped.lat;
-        out[1] = snapped.lon;
-        return true;
     }
 
     public static boolean snapDiagnostic(@Nullable GraphHopper hopper,

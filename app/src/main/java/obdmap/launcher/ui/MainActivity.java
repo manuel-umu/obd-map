@@ -38,6 +38,7 @@ import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.routing.NavigationTracker;
+import obdmap.launcher.routing.RoadMatcher;
 import obdmap.launcher.routing.RoadSnapper;
 import obdmap.launcher.routing.Route;
 import obdmap.launcher.routing.RoutingManager;
@@ -98,6 +99,12 @@ public final class MainActivity extends AppCompatActivity
 
     // Buffer para el resultado del snap-to-road
     private final double[] snapOut = new double[2];
+
+    // Map-matcher de la posición real
+    private final RoadMatcher roadMatcher = new RoadMatcher();
+
+    // Map-matcher del punto predicho, independiente para que pueda avanzar de arista
+    private final RoadMatcher leadMatcher = new RoadMatcher();
 
     // Buffer para el resultado de la predicción de posición
     private final double[] predictOut = new double[2];
@@ -390,9 +397,9 @@ public final class MainActivity extends AppCompatActivity
             RoutingManager rm = RoutingManager.getInstance();
             if (rm.getState() == RoutingManager.STATE_READY
                     && rm.getHopper() != null
-                    && RoadSnapper.snapToNetwork(rm.getHopper(), latitude, longitude,
-                                                RoadSnapper.MAX_SNAP_METERS,
-                                                bearingDegrees, hasBearing, snapOut)) {
+                    && roadMatcher.match(rm.getHopper(), latitude, longitude,
+                                         bearingDegrees, hasBearing,
+                                         RoadSnapper.MAX_SNAP_METERS, snapOut)) {
                 useLat = snapOut[0];
                 useLon = snapOut[1];
             }
@@ -460,10 +467,15 @@ public final class MainActivity extends AppCompatActivity
                 RoutingManager rmSnap = RoutingManager.getInstance();
                 if (rmSnap.getState() == RoutingManager.STATE_READY
                         && rmSnap.getHopper() != null) {
-                    predSnapped = RoadSnapper.snapToNetwork(rmSnap.getHopper(),
-                            predictOut[0], predictOut[1],
-                            RoadSnapper.MAX_SNAP_METERS,
-                            bearingDegrees, hasBearing, snapOut);
+                    // Primero se confina el punto adelantado a la vía donde está el coche
+                    predSnapped = roadMatcher.snapAhead(predictOut[0], predictOut[1],
+                            RoadSnapper.MAX_SNAP_METERS, snapOut);
+                    if (!predSnapped) {
+                        predSnapped = leadMatcher.match(rmSnap.getHopper(),
+                                predictOut[0], predictOut[1],
+                                bearingDegrees, hasBearing,
+                                RoadSnapper.MAX_SNAP_METERS, snapOut);
+                    }
                 }
             }
 
