@@ -113,7 +113,21 @@
     <string name="debug_fuel_method_015e">015E (directo)</string>
     <string name="debug_fuel_method_maf">MAF (estimado)</string>
     <string name="debug_fuel_method_sd">Speed-Density</string>
+    <string name="debug_fuel_method_load">Carga + RPM</string>
     <string name="debug_reset_avg_button">Reiniciar medio</string>
+
+    <!-- Soporte de PIDs declarado por la ECU -->
+    <string name="debug_pids_label">PIDs soportados:</string>
+    <!-- %1$s, %2$s y %3$s = marca de soporte de 0104, 0110 y 015E -->
+    <string name="debug_pids_format">04 %1$s · 10 %2$s · 5E %3$s</string>
+    <string name="debug_pid_yes">✓</string>
+    <string name="debug_pid_no">✗</string>
+
+    <!-- Calibración del método de consumo por carga -->
+    <string name="debug_calib_label">Calibración qMax (mg/carrera):</string>
+    <string name="debug_calib_save_button">Guardar</string>
+    <string name="debug_calib_saved">Calibración guardada</string>
+    <string name="debug_calib_invalid">Valor de calibración no válido</string>
     <!-- %1$.1f = valor float con 1 decimal -->
     <string name="debug_float_format">%1$.1f</string>
 

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -59,6 +60,33 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
                 boundService.resetAverageFuel();
             }
         });
+
+        binding.debugCalibInput.setText(
+                getString(R.string.debug_float_format, prefsManager.getFullLoadMgPerStroke()));
+        binding.debugCalibSaveButton.setOnClickListener(v -> saveCalibration());
+    }
+
+    /** Persiste la calibración qMax escrita por el usuario y la aplica al servicio. */
+    private void saveCalibration() {
+        float mgPerStroke;
+        try {
+            // El teclado decimal puede dar coma o punto según el locale.
+            mgPerStroke = Float.parseFloat(
+                    binding.debugCalibInput.getText().toString().trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, R.string.debug_calib_invalid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (mgPerStroke <= 0f) {
+            Toast.makeText(this, R.string.debug_calib_invalid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        prefsManager.setFullLoadMgPerStroke(mgPerStroke);
+        if (boundService != null) {
+            boundService.setFullLoadMgPerStroke(mgPerStroke);
+        }
+        Toast.makeText(this, R.string.debug_calib_saved, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -175,6 +203,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
                 iat != Integer.MIN_VALUE ? String.valueOf(iat) : noData);
         binding.debugMapValue.setText(mapKpa >= 0 ? String.valueOf(mapKpa) : noData);
 
+        updateSupportedPidsField();
         updateFuelRateField(boundService.getLastFuelRateRaw());
         updateFuelFields();
 
@@ -185,6 +214,19 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
         } else {
             binding.debugLastReading.setText(getString(R.string.debug_no_reading_yet));
         }
+    }
+
+    /** Fila con el soporte declarado de 0104 (carga), 0110 (MAF) y 015E (caudal). */
+    private void updateSupportedPidsField() {
+        if (boundService == null || binding == null) {
+            return;
+        }
+        String yes = getString(R.string.debug_pid_yes);
+        String no  = getString(R.string.debug_pid_no);
+        binding.debugPidsValue.setText(getString(R.string.debug_pids_format,
+                boundService.supportsLoad()     ? yes : no,
+                boundService.supportsMaf()      ? yes : no,
+                boundService.supportsFuelRate() ? yes : no));
     }
 
     /**
@@ -222,6 +264,9 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
         switch (method) {
             case FuelCalculator.METHOD_FUEL_RATE:
                 methodText = getString(R.string.debug_fuel_method_015e);
+                break;
+            case FuelCalculator.METHOD_LOAD:
+                methodText = getString(R.string.debug_fuel_method_load);
                 break;
             case FuelCalculator.METHOD_MAF:
                 methodText = getString(R.string.debug_fuel_method_maf);

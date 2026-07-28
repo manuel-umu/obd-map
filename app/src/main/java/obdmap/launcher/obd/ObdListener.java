@@ -23,6 +23,16 @@ public interface ObdListener {
     void onObdData(@NonNull String pid, int rawValue);
 
     /**
+     * Terminó el descubrimiento de PIDs soportados, tras el handshake de cada
+     * conexión. Las tres máscaras a cero significan que la ECU no respondió.
+     *
+     * @param mask00 bloque 0100 (PIDs 0x01-0x20)
+     * @param mask20 bloque 0120 (PIDs 0x21-0x40)
+     * @param mask40 bloque 0140 (PIDs 0x41-0x60)
+     */
+    void onPidsDiscovered(int mask00, int mask20, int mask40);
+
+    /**
      * Algo fue mal con un PID concreto (respuesta rara, timeout), pero la
      * conexión sigue viva.
      *

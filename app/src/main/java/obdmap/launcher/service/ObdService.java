@@ -54,6 +54,11 @@ public final class ObdService extends Service implements ObdListener {
     // lastFuelRateRaw: -1 = sin dato; 0 = ECU respondió pero con valor cero.
     private volatile int lastFuelRateRaw = -1;
 
+    // Soporte declarado por la ECU. Antes del descubrimiento se asume que sí.
+    private volatile boolean supportsLoad     = true;
+    private volatile boolean supportsMaf      = true;
+    private volatile boolean supportsFuelRate = true;
+
     /** Timestamp de la última lectura de cualquier PID. */
     private volatile long lastReadingTimestampMs = 0L;
 
@@ -125,6 +130,8 @@ public final class ObdService extends Service implements ObdListener {
 
         startForeground(ObdNotifications.NOTIFICATION_ID,
                 notifications.build(getString(R.string.obd_state_connecting)));
+
+        fuelCalculator.setFullLoadMgPerStroke(prefs.getFullLoadMgPerStroke());
 
         pollingThread = new HandlerThread("obd-poll");
         pollingThread.start();
@@ -258,6 +265,26 @@ public final class ObdService extends Service implements ObdListener {
         fuelCalculator.resetAverage();
     }
 
+    /** Aplica en caliente la calibración del método de carga (mg por carrera). */
+    public void setFullLoadMgPerStroke(float mgPerStroke) {
+        fuelCalculator.setFullLoadMgPerStroke(mgPerStroke);
+    }
+
+    /** Si la ECU declara soportar la carga calculada (PID 0104). */
+    public boolean supportsLoad() {
+        return supportsLoad;
+    }
+
+    /** Si la ECU declara soportar el MAF (PID 0110). */
+    public boolean supportsMaf() {
+        return supportsMaf;
+    }
+
+    /** Si la ECU declara soportar el caudal de combustible (PID 015E). */
+    public boolean supportsFuelRate() {
+        return supportsFuelRate;
+    }
+
     /** Timestamp de la última lectura en ms (epoch), o 0 si no ha llegado ninguna. */
     public long getLastReadingTimestampMs() {
         return lastReadingTimestampMs;
@@ -308,6 +335,23 @@ public final class ObdService extends Service implements ObdListener {
     }
 
     @Override
+    public void onPidsDiscovered(int mask00, int mask20, int mask40) {
+        BluetoothObdReader activeReader = reader;
+        if (activeReader == null) {
+            return;
+        }
+        supportsLoad     = activeReader.isPidSupported(ObdPids.LOAD);
+        supportsMaf      = activeReader.isPidSupported(ObdPids.MAF);
+        supportsFuelRate = activeReader.isPidSupported(ObdPids.FUEL_RATE);
+
+        // Con las tres máscaras a cero la ECU no contestó: dejamos que el
+        // FuelCalculator siga eligiendo método con lo que vaya llegando.
+        if (mask00 != 0) {
+            fuelCalculator.setPidAvailability(supportsFuelRate, supportsLoad, supportsMaf);
+        }
+    }
+
+    @Override
     public void onObdError(@NonNull String pid, @NonNull String description) {
         // Solo persistimos el mensaje si es un fallo definitivo, para mostrarlo en debug.
         if (currentState == ObdState.FAILED) {
@@ -331,6 +375,7 @@ public final class ObdService extends Service implements ObdListener {
         switch (pid) {
             case ObdPids.RPM:
                 lastRpm = rawValue;
+                fuelCalculator.onRpmUpdated(rawValue);
                 break;
             case ObdPids.SPEED:
                 lastSpeed = rawValue;
@@ -338,6 +383,7 @@ public final class ObdService extends Service implements ObdListener {
                 break;
             case ObdPids.LOAD:
                 lastLoad = rawValue;
+                fuelCalculator.onLoadUpdated(rawValue);
                 break;
             case ObdPids.MAF:
                 fuelCalculator.onMafUpdated(rawValue);
@@ -348,9 +394,6 @@ public final class ObdService extends Service implements ObdListener {
                 break;
             case ObdPids.THROTTLE:
                 lastThrottle = rawValue;
-                // Último PID rápido del ciclo: registrar UNA muestra por ciclo (~5 Hz).
-                // Así el ring buffer de 1600 entradas cubre ~320 s ≈ la ventana de 5 min.
-                fuelCalculator.addSample(System.currentTimeMillis());
                 break;
             case ObdPids.COOLANT:
                 lastCoolant = rawValue;
@@ -389,11 +432,18 @@ public final class ObdService extends Service implements ObdListener {
         }
     }
 
+    /** Encola un PID solo si la ECU lo declaró soportado. */
+    private void enqueueIfSupported(@NonNull String pid) {
+        BluetoothObdReader activeReader = reader;
+        if (activeReader != null && activeReader.isPidSupported(pid)) {
+            activeReader.enqueuePid(pid);
+        }
+    }
+
     /**
-     * Polling escalonado. El ELM327 no da abasto con 9 PIDs a 5 Hz, así que
-     * se reparten: los rápidos (RPM, velocidad, MAF, caudal, acelerador) van
-     * en cada ciclo; los lentos (carga, temperaturas, MAP) solo una vez cada
-     * 5 segundos, que para una temperatura sobra.
+     * Polling con contrapresión: mientras queden comandos sin enviar no se
+     * encola nada, así el ritmo real lo marca lo que aguante el bus (un
+     * KWP2000 a 10,4 kbps da 4-8 respuestas por segundo, no 25).
      *
      * Corre en el HandlerThread del servicio, nunca en el de UI.
      */
@@ -404,22 +454,27 @@ public final class ObdService extends Service implements ObdListener {
                 return;
             }
 
-            // --- PIDs rápidos: siempre ---
-            reader.enqueuePid(ObdPids.RPM);
-            reader.enqueuePid(ObdPids.SPEED);
-            reader.enqueuePid(ObdPids.MAF);
-            reader.enqueuePid(ObdPids.FUEL_RATE);
-            reader.enqueuePid(ObdPids.THROTTLE);
+            if (reader.pendingCommands() == 0) {
+                // --- PIDs rápidos ---
+                enqueueIfSupported(ObdPids.RPM);
+                enqueueIfSupported(ObdPids.SPEED);
+                enqueueIfSupported(ObdPids.LOAD);
+                enqueueIfSupported(ObdPids.MAF);
+                enqueueIfSupported(ObdPids.FUEL_RATE);
 
-            // --- PIDs lentos: una vez cada SLOW_CYCLE_COUNT ciclos ---
-            pollCycleCounter++;
-            if (pollCycleCounter >= SLOW_CYCLE_COUNT) {
-                pollCycleCounter = 0;
-                reader.enqueuePid(ObdPids.LOAD);
-                reader.enqueuePid(ObdPids.COOLANT);
-                reader.enqueuePid(ObdPids.IAT);
-                reader.enqueuePid(ObdPids.MAP);
+                // --- PIDs lentos: una vez cada SLOW_CYCLE_COUNT ciclos ---
+                pollCycleCounter++;
+                if (pollCycleCounter >= SLOW_CYCLE_COUNT) {
+                    pollCycleCounter = 0;
+                    enqueueIfSupported(ObdPids.THROTTLE);
+                    enqueueIfSupported(ObdPids.COOLANT);
+                    enqueueIfSupported(ObdPids.IAT);
+                    enqueueIfSupported(ObdPids.MAP);
+                }
             }
+
+            // Una muestra del consumo medio por ciclo de polling (~5 Hz).
+            fuelCalculator.addSample(System.currentTimeMillis());
 
             if (pollingActive && pollingHandler != null) {
                 pollingHandler.postDelayed(this, POLL_INTERVAL_MS);

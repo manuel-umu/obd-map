@@ -5,6 +5,7 @@
     de consumo diésel (acelerador, temperaturas, MAP, fuel rate, consumo instantáneo/medio).
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_dark">
@@ -309,6 +310,31 @@
         <!-- BLOQUE: Consumo -->
         <!-- ================================================================ -->
 
+        <!-- Fila PIDs soportados declarados por la ECU -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/debug_pids_label"
+                android:textColor="@color/text_secondary"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/debugPidsValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="@string/debug_no_data"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Fila caudal 015E (solo si soportado) -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -482,6 +508,49 @@
             android:text="@string/debug_reset_avg_button"
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
+
+        <!-- Calibración del método de consumo por carga -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/debug_calib_label"
+            android:textColor="@color/text_secondary"
+            android:textSize="18sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/debugCalibInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_weight="1"
+                android:hint="@string/debug_calib_label"
+                android:inputType="numberDecimal"
+                android:maxLength="6"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="20sp"
+                tools:ignore="Autofill" />
+
+            <Button
+                android:id="@+id/debugCalibSaveButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="12dp"
+                android:background="@color/primary_dark"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="@string/debug_calib_save_button"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
 
         <!-- Separador -->
         <View

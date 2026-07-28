@@ -77,6 +77,14 @@ public final class BluetoothObdReader {
     @Nullable private volatile InputStream inputStream;
     @Nullable private volatile OutputStream outputStream;
 
+    // Máscaras de PIDs soportados por la ECU (bloques 0100, 0120 y 0140).
+    private volatile int supportedMask00 = 0;
+    private volatile int supportedMask20 = 0;
+    private volatile int supportedMask40 = 0;
+
+    /** true si la ECU respondió al 0100 y las máscaras son fiables. */
+    private volatile boolean pidsDiscovered = false;
+
     // Marca de tiempo en que se alcanzó READY por última vez (para backoff reset)
     private long readySinceMs = 0L;
 
@@ -155,6 +163,38 @@ public final class BluetoothObdReader {
         return state;
     }
 
+    /** Número de comandos aún sin enviar. Sirve de medida de saturación del bus. */
+    public int pendingCommands() {
+        return commandQueue.size();
+    }
+
+    /**
+     * Si la ECU declaró soportar un PID en los bloques 0100/0120/0140.
+     * Mientras el descubrimiento no haya funcionado devuelve true para todo:
+     * mejor sondear de más que quedarse sin datos con un adaptador clónico.
+     *
+     * @param pidCommand comando de 4 caracteres, p. ej. "0110"
+     */
+    public boolean isPidSupported(@NonNull String pidCommand) {
+        if (!pidsDiscovered) {
+            return true;
+        }
+        int pid = (hexDigit(pidCommand.charAt(2)) << 4) | hexDigit(pidCommand.charAt(3));
+        if (pid <= 0x00) {
+            return true;
+        }
+        if (pid <= 0x20) {
+            return isMaskBitSet(supportedMask00, pid);
+        }
+        if (pid <= 0x40) {
+            return isMaskBitSet(supportedMask20, pid - 0x20);
+        }
+        if (pid <= 0x60) {
+            return isMaskBitSet(supportedMask40, pid - 0x40);
+        }
+        return false;
+    }
+
 
     // =========================================================================
     // Bucle principal del hilo OBD
@@ -195,6 +235,9 @@ public final class BluetoothObdReader {
                 }
                 continue;
             }
+
+            // Se repite en cada reconexión: la ECU puede haber cambiado (otro coche).
+            discoverSupportedPids();
 
             // Conexión establecida y lista: reset del backoff cuando sea estable.
             setState(ObdState.READY);
@@ -331,6 +374,70 @@ public final class BluetoothObdReader {
             return false;
         }
         return containsIgnoreCase(response, expectedToken);
+    }
+
+    // =========================================================================
+    // Descubrimiento de PIDs soportados
+    // =========================================================================
+
+    /**
+     * Consulta los bloques de PIDs soportados (0100, y en cascada 0120 y 0140)
+     * y notifica las máscaras. Si el 0100 no responde, el descubrimiento queda
+     * marcado como fallido y isPidSupported() pasa a dar todo por soportado.
+     */
+    private void discoverSupportedPids() {
+        pidsDiscovered = false;
+        supportedMask00 = queryPidMask("0100");
+        supportedMask20 = 0;
+        supportedMask40 = 0;
+
+        if (supportedMask00 != 0) {
+            // El bit 32 de cada bloque anuncia que existe el bloque siguiente.
+            if (isMaskBitSet(supportedMask00, 32)) {
+                supportedMask20 = queryPidMask("0120");
+            }
+            if (isMaskBitSet(supportedMask20, 32)) {
+                supportedMask40 = queryPidMask("0140");
+            }
+            pidsDiscovered = true;
+        }
+
+        listener.onPidsDiscovered(supportedMask00, supportedMask20, supportedMask40);
+    }
+
+    /**
+     * Máscara de 32 bits (bytes A B C D) de un bloque de soporte, o 0 si no
+     * hubo respuesta válida.
+     */
+    private int queryPidMask(@NonNull String command) {
+        int expectedPid = (hexDigit(command.charAt(2)) << 4) | hexDigit(command.charAt(3));
+
+        // Dos intentos: con ATSP0 la primera petición se va en negociar el protocolo.
+        for (int attempt = 0; attempt < 2; attempt++) {
+            String response = sendCommand(command + "\r");
+            if (response == null) {
+                return 0;
+            }
+            if (containsIgnoreCase(response, "SEARCHING")) {
+                continue;
+            }
+            int[] bytes = extractHexBytes(response);
+            if (bytes == null) {
+                continue;
+            }
+            for (int j = 0; j + 5 < bytes.length; j++) {
+                if (bytes[j] == 0x41 && bytes[j + 1] == expectedPid) {
+                    return (bytes[j + 2] << 24) | (bytes[j + 3] << 16)
+                            | (bytes[j + 4] << 8) | bytes[j + 5];
+                }
+            }
+        }
+        return 0;
+    }
+
+    /** Bit del PID número p (1..32) dentro de una máscara de bloque. */
+    private static boolean isMaskBitSet(int mask, int p) {
+        return ((mask >>> (32 - p)) & 1) != 0;
     }
 
     /**

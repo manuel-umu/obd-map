@@ -7,6 +7,8 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import obdmap.launcher.obd.FuelCalculator;
+
 /**
  * Acceso tipado a SharedPreferences. Toda la persistencia de la app pasa por
  * aquí — nada de bases de datos (Room/SQLite), que no caben en el presupuesto
@@ -34,6 +36,9 @@ public final class PrefsManager {
 
     // Preferencia de modo noche (true = noche, false = día).
     private static final String KEY_NIGHT_MODE = "night_mode";
+
+    // Calibración del consumo por carga: mg de gasoil por carrera a plena carga.
+    private static final String KEY_FULL_LOAD_MG = "full_load_mg_per_stroke";
 
     // Overlay de diagnóstico de snap sobre el mapa (true = visible).
     private static final String KEY_DEBUG_OVERLAY = "debug_overlay";
@@ -188,5 +193,16 @@ public final class PrefsManager {
 
     public void setNightMode(boolean night) {
         prefs.edit().putBoolean(KEY_NIGHT_MODE, night).apply();
+    }
+
+    // ---------------------------------------------------------------------
+    // Calibración del consumo por carga
+    // ---------------------------------------------------------------------
+    public float getFullLoadMgPerStroke() {
+        return prefs.getFloat(KEY_FULL_LOAD_MG, FuelCalculator.DEFAULT_FULL_LOAD_MG_PER_STROKE);
+    }
+
+    public void setFullLoadMgPerStroke(float mgPerStroke) {
+        prefs.edit().putFloat(KEY_FULL_LOAD_MG, mgPerStroke).apply();
     }
 }

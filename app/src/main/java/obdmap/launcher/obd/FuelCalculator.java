@@ -7,12 +7,13 @@ import androidx.annotation.NonNull;
  *
  * Usa el mejor dato disponible, por este orden:
  *
- * 1. PID 015E (caudal directo de la ECU): el más fiable. Se activa solo en
- *    cuanto llega el primer valor válido.
- * 2. MAF: estimación a partir del aire que entra. En diésel sobreestima a
- *    carga parcial (la mezcla siempre lleva aire de sobra), así que es solo
- *    un plan B.
- * 3. Speed-density (MAP + IAT + RPM): pendiente de implementar.
+ * 1. PID 015E: caudal directo de la ECU, el más fiable.
+ * 2. Carga (0104) + RPM: el gasoil inyectado por carrera es proporcional a la
+ *    carga calculada, escalado por la constante de calibración qMax.
+ * 3. MAF: solo válido con λ = 1, así que en diésel sobreestima. Último recurso.
+ *
+ * El método lo fija setPidAvailability() con lo que declare la ECU; los latches
+ * de los setters solo actúan mientras ese descubrimiento no haya llegado.
  *
  * El consumo medio se calcula sobre los últimos 5 minutos con un ring buffer
  * de arrays primitivos: cero objetos nuevos por muestra.
@@ -38,6 +39,12 @@ public final class FuelCalculator {
     /** Divisor para convertir el raw de MAF (g/s × 100) a g/s. */
     private static final float MAF_DIVISOR = 100.0f;
 
+    /** Cilindros del motor (Hyundai Sonata 2.0 CRDi). */
+    private static final int CYLINDERS = 4;
+
+    /** Calibración por defecto del método de carga, en mg de gasoil por carrera. */
+    public static final float DEFAULT_FULL_LOAD_MG_PER_STROKE = 55.0f;
+
     // -------------------------------------------------------------------------
     // Constantes de comportamiento
     // -------------------------------------------------------------------------
@@ -58,7 +65,7 @@ public final class FuelCalculator {
     private static final int RING_SIZE = 1600;
 
     // -------------------------------------------------------------------------
-    // Detección de soporte de 015E
+    // Métodos de cálculo, en orden de preferencia decreciente
     // -------------------------------------------------------------------------
 
     /** @IntDef para el metodo de cálculo activo. */
@@ -66,6 +73,7 @@ public final class FuelCalculator {
     public static final int METHOD_FUEL_RATE    = 1; // 015E
     public static final int METHOD_MAF          = 2;
     public static final int METHOD_SPEED_DENSITY = 3; // no implementado aún
+    public static final int METHOD_LOAD         = 4; // carga 0104 + RPM
 
     // -------------------------------------------------------------------------
     // Modelo de hilos: onXxxUpdated/addSample llegan desde el hilo OBD; los
@@ -79,6 +87,15 @@ public final class FuelCalculator {
     /** true una vez que 015E respondió con un valor válido (>0). */
     private volatile boolean fuelRateSupported = false;
 
+    /** true cuando setPidAvailability() ya dijo qué soporta la ECU. */
+    private volatile boolean pidAvailabilityKnown = false;
+
+    /** Soporte declarado de 015E. Solo tiene sentido con pidAvailabilityKnown. */
+    private volatile boolean fuelRateAvailable = false;
+
+    /** Constante de calibración del método de carga, en mg por carrera. */
+    private volatile float fullLoadMgPerStroke = DEFAULT_FULL_LOAD_MG_PER_STROKE;
+
     // -------------------------------------------------------------------------
     // Últimos valores recibidos de los PIDs (todos en unidades reales)
     // -------------------------------------------------------------------------
@@ -91,6 +108,12 @@ public final class FuelCalculator {
 
     /** Velocidad del vehículo en km/h (PID 010D directo). */
     private volatile float lastSpeedKmh = NO_DATA;
+
+    /** Carga calculada del motor en % (PID 0104). -1 = sin dato. */
+    private volatile int lastLoadPercent = -1;
+
+    /** Régimen del motor en rpm (PID 010C). -1 = sin dato. */
+    private volatile int lastRpm = -1;
 
     /** Protege el ring buffer (writeIndex, sampleCount y los tres arrays). */
     private final Object lock = new Object();
@@ -125,8 +148,52 @@ public final class FuelCalculator {
      */
     public void onMafUpdated(int rawMaf) {
         lastMafGs = rawMaf / MAF_DIVISOR;
-        // Si 015E no está soportado, el MAF activa el metodo de fallback.
-        if (!fuelRateSupported && activeMethod == METHOD_NONE) {
+        updateFallbackMethod();
+    }
+
+    /**
+     * Qué PIDs de consumo declara la ECU. Fija el método por prioridad y
+     * desactiva los latches de los setters.
+     */
+    public void setPidAvailability(boolean fuelRate, boolean load, boolean maf) {
+        fuelRateAvailable    = fuelRate;
+        pidAvailabilityKnown = true;
+
+        if (fuelRate) {
+            activeMethod = METHOD_FUEL_RATE;
+        } else if (load) {
+            activeMethod = METHOD_LOAD;
+        } else if (maf) {
+            activeMethod = METHOD_MAF;
+        } else {
+            activeMethod = METHOD_NONE;
+        }
+    }
+
+    /** Calibración del método de carga, en mg de gasoil por carrera a plena carga. */
+    public void setFullLoadMgPerStroke(float mgPerStroke) {
+        if (mgPerStroke > 0.0f) {
+            fullLoadMgPerStroke = mgPerStroke;
+        }
+    }
+
+    public float getFullLoadMgPerStroke() {
+        return fullLoadMgPerStroke;
+    }
+
+    /**
+     * Red de seguridad mientras el descubrimiento de PIDs no ha llegado: elige
+     * método con los datos que ya hayan aparecido, en el mismo orden de prioridad.
+     */
+    private void updateFallbackMethod() {
+        if (pidAvailabilityKnown) {
+            return;
+        }
+        if (fuelRateSupported) {
+            activeMethod = METHOD_FUEL_RATE;
+        } else if (lastLoadPercent >= 0 && lastRpm > 0) {
+            activeMethod = METHOD_LOAD;
+        } else if (!Float.isNaN(lastMafGs)) {
             activeMethod = METHOD_MAF;
         }
     }
@@ -139,6 +206,10 @@ public final class FuelCalculator {
      * @param rawFuelRate punto fijo L/h×20, tal como lo entrega el reader
      */
     public void onFuelRateUpdated(int rawFuelRate) {
+        if (pidAvailabilityKnown && !fuelRateAvailable) {
+            // La ECU ya dijo que no soporta 015E: lo que llegue aquí no vale.
+            return;
+        }
         if (!fuelRateSupported) {
             // Detección de soporte: solo un valor estrictamente positivo demuestra
             // que la ECU implementa el PID (un 0 aislado podría ser respuesta vacía).
@@ -146,7 +217,7 @@ public final class FuelCalculator {
                 return;
             }
             fuelRateSupported = true;
-            activeMethod = METHOD_FUEL_RATE;
+            updateFallbackMethod();
         } else if (rawFuelRate < 0) {
             // Respuesta inválida puntual: conservamos el último valor bueno.
             return;
@@ -161,6 +232,18 @@ public final class FuelCalculator {
         lastSpeedKmh = speedKmh;
     }
 
+    /** Nueva carga calculada del motor (PID 0104), en %. */
+    public void onLoadUpdated(int loadPercent) {
+        lastLoadPercent = loadPercent;
+        updateFallbackMethod();
+    }
+
+    /** Nuevo régimen del motor (PID 010C), en rpm. */
+    public void onRpmUpdated(int rpm) {
+        lastRpm = rpm;
+        updateFallbackMethod();
+    }
+
     // =========================================================================
     // API pública — cálculo de consumo instantáneo
     // =========================================================================
@@ -173,6 +256,8 @@ public final class FuelCalculator {
         switch (activeMethod) {
             case METHOD_FUEL_RATE:
                 return lastFuelRateLh;
+            case METHOD_LOAD:
+                return calcLhFromLoad();
             case METHOD_MAF:
                 return calcLhFromMaf();
             default:
@@ -305,8 +390,24 @@ public final class FuelCalculator {
     }
 
     // =========================================================================
-    // Cálculo interno por metodo MAF
+    // Cálculos internos
     // =========================================================================
+
+    /**
+     * Estima L/h desde la carga calculada y las rpm: en un motor de encendido
+     * por compresión la carga de la SAE J1979 es proporcional al gasoil inyectado
+     * por carrera, y hay una inyección por cilindro cada dos vueltas.
+     */
+    private float calcLhFromLoad() {
+        int loadPercent = lastLoadPercent;
+        int rpm = lastRpm;
+        if (loadPercent < 0 || rpm <= 0) {
+            return NO_DATA;
+        }
+        float mgPerMinute = (loadPercent / 100.0f) * fullLoadMgPerStroke
+                * CYLINDERS * (rpm / 2.0f);
+        return mgPerMinute * 60.0f / (1000.0f * DENSIDAD_DIESEL);
+    }
 
     /**
      * Estima L/h a partir del flujo de aire (MAF): se divide el aire entre la
