@@ -69,6 +69,13 @@ public final class PositionLayer implements Map.UpdateListener {
     // Posición intermedia reutilizable para leer el viewport en modo autoCenter=false.
     private final MapPosition reusableViewportPos = new MapPosition();
 
+    // Última posición publicada al marcador, en microgrados (resolución de GeoPoint).
+    private int lastPublishedLatE6 = Integer.MIN_VALUE;
+    private int lastPublishedLonE6 = Integer.MIN_VALUE;
+
+    // Último ángulo de pantalla publicado al símbolo, en grados enteros [0, 360).
+    private int lastPublishedAngle = Integer.MIN_VALUE;
+
     /**
      * @param map           mapa VTM al que se añade la capa
      * @param arrowDrawable flecha con la punta hacia arriba (norte); se rasteriza una vez
@@ -218,16 +225,38 @@ public final class PositionLayer implements Map.UpdateListener {
             markerLon = org.oscim.core.MercatorProjection.toLongitude(interpX);
         }
 
-        carMarker.geoPoint = new GeoPoint(markerLat, markerLon);
+        // Microgrados: la resolución real a la que GeoPoint guarda la posición.
+        int latE6 = (int) (markerLat * 1E6);
+        int lonE6 = (int) (markerLon * 1E6);
 
-        // Orientación de la flecha en pantalla
+        // Orientación de la flecha en pantalla, redondeada a grados enteros.
+        int screenAngleDeg = lastPublishedAngle;
         if (hasBearingValue) {
             float screenAngle = lastBearingDeg + mapPosition.bearing;
             screenAngle %= 360f;
             if (screenAngle < 0f) {
                 screenAngle += 360f;
             }
-            carSymbol.setRotation(ROTATION_SIGN * screenAngle);
+            screenAngleDeg = Math.round(screenAngle) % 360;
+        }
+
+        boolean positionChanged = latE6 != lastPublishedLatE6 || lonE6 != lastPublishedLonE6;
+        boolean angleChanged = screenAngleDeg != lastPublishedAngle;
+
+        // Sin cambios a la resolución dibujable: no marcar el renderer sucio.
+        if (!positionChanged && !angleChanged) {
+            return;
+        }
+
+        if (positionChanged) {
+            carMarker.geoPoint = new GeoPoint(markerLat, markerLon);
+            lastPublishedLatE6 = latE6;
+            lastPublishedLonE6 = lonE6;
+        }
+
+        if (angleChanged) {
+            carSymbol.setRotation(ROTATION_SIGN * screenAngleDeg);
+            lastPublishedAngle = screenAngleDeg;
         }
 
         // Notifica al MarkerRenderer que los InternalItem.px/py han cambiado.

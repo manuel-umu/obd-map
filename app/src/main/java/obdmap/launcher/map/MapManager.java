@@ -69,6 +69,14 @@ public final class MapManager {
     // Duración usada en las animaciones que no vienen de un fix GPS (recentrar).
     private static final long ANIM_RECENTER_MS = 500L;
 
+    // Suavizado del periodo entre fixes GPS (media móvil exponencial).
+    private static final float FIX_PERIOD_SMOOTHING = 0.2f;
+
+    // Umbrales por debajo de los cuales el objetivo se considera igual al anterior.
+    private static final double ANIM_MIN_LATLON_DELTA  = 1e-7;
+    private static final float  ANIM_MIN_BEARING_DELTA = 0.25f;
+    private static final double ANIM_MIN_ZOOM_DELTA    = 0.01;
+
     // Nombre del archivo de tema de día dentro de assets/themes/
     private static final String THEME_DAY   = "themes/driving_day.xml";
     // Nombre del archivo de tema de noche dentro de assets/themes/
@@ -95,6 +103,15 @@ public final class MapManager {
 
     // Instante del último updateCar, para medir el periodo real del GPS.
     private long lastUpdateMs = 0L;
+
+    // Periodo medio entre fixes GPS (ms), suavizado: es la duración de la animación.
+    private float smoothedFixPeriodMs = ANIM_DEFAULT_MS;
+
+    // Último objetivo entregado al animador. NaN mientras no se haya animado nada.
+    private double lastAnimLat = Double.NaN;
+    private double lastAnimLon = 0.0;
+    private float  lastAnimBearing = 0f;
+    private double lastAnimZoom = 0.0;
 
     /**
      * Engancha el manager al MapView ya inflado, abre el .map y añade las capas.
@@ -185,9 +202,12 @@ public final class MapManager {
         long nowMs = SystemClock.elapsedRealtime();
         long animMs;
         if (lastUpdateMs == 0L) {
+            smoothedFixPeriodMs = ANIM_DEFAULT_MS;
             animMs = ANIM_DEFAULT_MS;
         } else {
-            animMs = nowMs - lastUpdateMs;
+            smoothedFixPeriodMs += FIX_PERIOD_SMOOTHING
+                    * ((nowMs - lastUpdateMs) - smoothedFixPeriodMs);
+            animMs = (long) smoothedFixPeriodMs;
             if (animMs < ANIM_MIN_MS) {
                 animMs = ANIM_MIN_MS;
             } else if (animMs > ANIM_MAX_MS) {
@@ -222,18 +242,34 @@ public final class MapManager {
             targetBearing = currentMapBearing;
         }
 
+        // Auto-zoom por velocidad (suavizada): alejamos al acelerar (como Waze).
+        double targetZoom = zoomForSpeed(smoothedSpeedMs);
+
+        // Objetivo idéntico al anterior (coche parado): dejar el mapa en reposo.
+        if (!Double.isNaN(lastAnimLat)
+                && Math.abs(lat - lastAnimLat) < ANIM_MIN_LATLON_DELTA
+                && Math.abs(lon - lastAnimLon) < ANIM_MIN_LATLON_DELTA
+                && Math.abs(targetBearing - lastAnimBearing) < ANIM_MIN_BEARING_DELTA
+                && Math.abs(targetZoom - lastAnimZoom) < ANIM_MIN_ZOOM_DELTA) {
+            return;
+        }
+
         // Creamos un MapPosition nuevo para el target del animador.
         MapPosition targetPos = new MapPosition();
         targetPos.copy(reusablePosition);
         targetPos.setPosition(lat, lon);
         targetPos.setBearing(targetBearing);
-        // Auto-zoom por velocidad (suavizada): alejamos al acelerar (como Waze).
-        targetPos.setZoom(zoomForSpeed(smoothedSpeedMs));
+        targetPos.setZoom(targetZoom);
         // Inclinación 3D: cámara reclinada para ver la carretera al frente (Waze-style).
         targetPos.setTilt(DRIVE_TILT);
 
         // animateTo reemplaza cualquier animación en curso
         map.animator().animateTo(animMs, targetPos);
+
+        lastAnimLat = lat;
+        lastAnimLon = lon;
+        lastAnimBearing = targetBearing;
+        lastAnimZoom = targetZoom;
     }
 
     /**
@@ -281,6 +317,9 @@ public final class MapManager {
         targetPos.setBearing(0f);
 
         map.animator().animateTo(ANIM_RECENTER_MS, targetPos);
+
+        // Invalida el objetivo cacheado: el siguiente fix debe reanimar sí o sí.
+        lastAnimLat = Double.NaN;
     }
 
     /**
