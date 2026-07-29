@@ -22,12 +22,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:background="@drawable/btn_surface"
+            android:background="@drawable/btn_hud_night"
             android:minHeight="56dp"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:text="@string/back_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent"
             android:textSize="16sp" />
 
         <TextView
@@ -50,9 +50,9 @@
         android:layout_margin="16dp"
         android:background="@color/surface_dark"
         android:padding="16dp"
+        android:text="@string/info_title"
         android:textColor="@color/accent"
-        android:textSize="17sp"
-        android:text="@string/info_title" />
+        android:textSize="17sp" />
 
     <!-- Resultado de la comprobación (oculto hasta pulsar el botón). -->
     <TextView
@@ -80,11 +80,11 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
-        android:background="@drawable/btn_primary"
-        android:minHeight="64dp"
+        android:background="@drawable/btn_hud_night"
+        android:minHeight="110dp"
         android:text="@string/info_check_button"
-        android:textColor="@color/text_primary"
-        android:textSize="17sp" />
+        android:textColor="@color/accent"
+        android:textSize="20sp" />
 
     <!-- Botón "Instalar" — solo visible si hay versión nueva. -->
     <Button
@@ -94,11 +94,11 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        android:background="@drawable/btn_accent"
-        android:minHeight="64dp"
+        android:background="@drawable/btn_hud_primary"
+        android:minHeight="110dp"
         android:text="@string/update_button_install"
-        android:textColor="@color/text_primary"
-        android:textSize="17sp"
+        android:textColor="@color/on_accent"
+        android:textSize="20sp"
         android:visibility="gone" />
 
 </LinearLayout>

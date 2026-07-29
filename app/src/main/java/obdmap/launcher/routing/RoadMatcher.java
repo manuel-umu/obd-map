@@ -6,7 +6,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.graphhopper.GraphHopper;
+import com.graphhopper.routing.ev.BooleanEncodedValue;
 import com.graphhopper.routing.util.EdgeFilter;
+import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.Graph;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.QueryResult;
@@ -35,8 +37,11 @@ public final class RoadMatcher {
     /** Metros por grado de latitud */
     private static final double METERS_PER_DEG = 111320.0;
 
-    /** Desviación angular máxima entre el rumbo GPS y el azimut de la arista */
-    private static final float MAX_HEADING_DIFF_DEG = 45.0f;
+    /** Desviación angular máxima entre el rumbo GPS y el sentido admitido de la arista */
+    private static final float MAX_HEADING_DIFF_DEG = 60.0f;
+
+    /** Fixes consecutivos circulando contra el sentido de la arista pegada antes de soltarla */
+    private static final int MAX_WRONG_DIR_FIXES = 2;
 
     private final HeadingEdgeFilter headingFilter =
             new HeadingEdgeFilter(MAX_HEADING_DIFF_DEG);
@@ -60,6 +65,9 @@ public final class RoadMatcher {
     private int pendingEdgeId = -1;
     private int pendingCount = 0;
 
+    /** Fixes seguidos en los que la arista pegada no admite el rumbo actual */
+    private int wrongDirFixes = 0;
+
     /**
      * Pega (lat, lon) a la red manteniendo la arista del fix anterior salvo mejora clara.
      * @param out array de tamaño >= 2; out[0]=lat, out[1]=lon del punto pegado
@@ -75,6 +83,7 @@ public final class RoadMatcher {
             graph = hopper.getGraphHopperStorage();
             index = hopper.getLocationIndex();
             explorer = (graph != null) ? graph.createEdgeExplorer() : null;
+            headingFilter.setAccessEnc(fetchAccessEnc(hopper));
             forgetSticky();
         }
         if (index == null || graph == null) {
@@ -94,10 +103,21 @@ public final class RoadMatcher {
             EdgeIteratorState sticky = fetchSticky();
             if (sticky == null) {
                 forgetSticky();
-            } else if (projectOnEdge(sticky, lat, lon)) {
-                stickyLat = projOut[0];
-                stickyLon = projOut[1];
-                stickyDist = projOut[2];
+            } else {
+                if (hasBearing) {
+                    if (headingFilter.matchesDirection(sticky, lat, lon, bearingDeg)) {
+                        wrongDirFixes = 0;
+                    } else {
+                        wrongDirFixes++;
+                    }
+                }
+                if (wrongDirFixes >= MAX_WRONG_DIR_FIXES) {
+                    forgetSticky();
+                } else if (projectOnEdge(sticky, lat, lon)) {
+                    stickyLat = projOut[0];
+                    stickyLon = projOut[1];
+                    stickyDist = projOut[2];
+                }
             }
         }
 
@@ -164,10 +184,12 @@ public final class RoadMatcher {
 
     /**
      * Proyecta (lat, lon) sobre la arista pegada y sus conectadas, sin tocar el estado.
+     * Con rumbo fiable se descartan las conectadas que no admiten ese sentido.
      * @param out array de tamaño >= 2; out[0]=lat, out[1]=lon del punto proyectado
      * @return true si alguna proyección cae dentro de maxMeters y se escribió en out
      */
-    public boolean snapAhead(double lat, double lon, double maxMeters, @NonNull double[] out) {
+    public boolean snapAhead(double lat, double lon, float bearingDeg, boolean hasBearing,
+                             double maxMeters, @NonNull double[] out) {
         if (stickyEdgeId < 0 || graph == null || explorer == null) {
             return false;
         }
@@ -194,6 +216,9 @@ public final class RoadMatcher {
             EdgeIterator it = explorer.setBaseNode(node);
             while (it.next()) {
                 if (it.getEdge() == stickyEdgeId) {
+                    continue;
+                }
+                if (hasBearing && !headingFilter.matchesDirection(it, lat, lon, bearingDeg)) {
                     continue;
                 }
                 if (projectOnEdge(it, lat, lon) && projOut[2] < bestDist) {
@@ -286,7 +311,21 @@ public final class RoadMatcher {
         stickyEdgeId = -1;
         stickyBaseNode = -1;
         stickyAdjNode = -1;
+        wrongDirFixes = 0;
         clearPending();
+    }
+
+    /**
+     * Valor codificado de acceso del encoder "car"; null si el grafo no lo expone
+     */
+    @Nullable
+    private static BooleanEncodedValue fetchAccessEnc(@NonNull GraphHopper hopper) {
+        try {
+            FlagEncoder encoder = hopper.getEncodingManager().getEncoder("car");
+            return encoder.getAccessEnc();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private void clearPending() {

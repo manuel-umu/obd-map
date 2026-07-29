@@ -4,20 +4,15 @@ import androidx.annotation.NonNull;
 
 /**
  * Proyecta una posición GPS hacia delante en la dirección del rumbo para
- * compensar la latencia del animador del mapa (~750 ms) y el ciclo GPS (~1 s).
+ * compensar la latencia del animador del mapa y el ciclo GPS.
  *
  * <p>No tiene estado: todos los métodos son estáticos. No crea objetos en el
  * hot path; escribe el resultado en el array {@code out} pasado como parametro
  */
 public final class PositionPredictor {
 
-    /**
-     * Milisegundos de adelanto a proyectar. Debe ser >= a la duración de la
-     * animación del viewport (MapManager.ANIM_DURATION_MS = 750 ms) más la
-     * latencia típica del GPS (250 ms). Subir si la flecha sigue por detrás;
-     * bajar si se adelanta demasiado en frenadas o curvas cerradas.
-     */
-    public static final long LOOKAHEAD_MS = 800L;
+    /** Milisegundos de adelanto a proyectar, acotados por MAX_LEAD_METERS. */
+    public static final long LOOKAHEAD_MS = 1000L;
 
     /**
      * Distancia máxima de adelanto en metros, por si el GPS envia algo raro

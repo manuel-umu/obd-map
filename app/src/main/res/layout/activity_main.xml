@@ -129,21 +129,6 @@
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/dayNightToggleButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_margin="16dp"
-        android:background="@color/surface_dark"
-        android:minHeight="72dp"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:text="@string/toggle_night_mode"
-        android:textColor="@color/text_primary"
-        android:textSize="16sp" />
-
-
     <TextView
         android:id="@+id/debugOverlay"
         android:layout_width="wrap_content"
@@ -175,12 +160,12 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_margin="16dp"
-        android:background="@color/primary"
+        android:background="@drawable/btn_hud_primary"
         android:minHeight="72dp"
         android:paddingStart="28dp"
         android:paddingEnd="28dp"
         android:text="@string/recenter_button"
-        android:textColor="@color/text_primary"
+        android:textColor="@color/on_accent"
         android:textSize="18sp"
         android:visibility="gone" />
 
@@ -227,24 +212,24 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="12dp"
-                android:background="@color/primary"
+                android:background="@drawable/btn_hud_primary"
                 android:minHeight="72dp"
                 android:paddingStart="28dp"
                 android:paddingEnd="28dp"
                 android:text="@string/dest_confirm_go"
-                android:textColor="@color/text_primary"
+                android:textColor="@color/on_accent"
                 android:textSize="18sp" />
 
             <Button
                 android:id="@+id/destConfirmCancelButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@color/surface_dark"
+                android:background="@drawable/btn_hud_night"
                 android:minHeight="72dp"
                 android:paddingStart="28dp"
                 android:paddingEnd="28dp"
                 android:text="@string/dest_confirm_cancel"
-                android:textColor="@color/text_primary"
+                android:textColor="@color/accent"
                 android:textSize="18sp" />
 
         </LinearLayout>
@@ -311,12 +296,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
-            android:background="@drawable/btn_surface"
+            android:background="@drawable/btn_hud_night"
             android:minHeight="72dp"
             android:paddingStart="28dp"
             android:paddingEnd="28dp"
             android:text="@string/cancel_route_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent"
             android:textSize="18sp"
             android:visibility="gone" />
 
@@ -324,12 +309,12 @@
             android:id="@+id/appSettingsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/btn_primary"
+            android:background="@drawable/btn_hud_night"
             android:minHeight="72dp"
             android:paddingStart="28dp"
             android:paddingEnd="28dp"
             android:text="@string/app_settings_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent"
             android:textSize="18sp" />
 
     </LinearLayout>

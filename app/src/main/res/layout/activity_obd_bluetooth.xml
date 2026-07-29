@@ -25,12 +25,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:background="@drawable/btn_surface"
+            android:background="@drawable/btn_hud_night"
             android:minHeight="56dp"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:text="@string/back_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent"
             android:textSize="16sp" />
 
         <TextView
@@ -108,10 +108,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/btn_primary"
+            android:background="@drawable/btn_hud_primary"
             android:minHeight="64dp"
             android:text="@string/settings_scan_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/on_accent"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -120,10 +120,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/btn_surface"
+            android:background="@drawable/btn_hud_night"
             android:minHeight="64dp"
             android:text="@string/settings_open_bt_settings"
-            android:textColor="@color/text_secondary"
+            android:textColor="@color/accent"
             android:textSize="16sp" />
 
     </LinearLayout>
@@ -137,10 +137,10 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp"
-        android:background="@drawable/btn_surface"
+        android:background="@drawable/btn_hud_night"
         android:minHeight="64dp"
         android:text="@string/settings_clear_button"
-        android:textColor="@color/text_secondary"
+        android:textColor="@color/accent"
         android:textSize="17sp" />
 
 </LinearLayout>

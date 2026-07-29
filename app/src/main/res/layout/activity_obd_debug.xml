@@ -29,11 +29,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:background="@color/primary_dark"
+                android:background="@drawable/btn_hud_night"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:text="@string/debug_back_button"
-                android:textColor="@color/text_primary"
+                android:textColor="@color/accent"
                 android:textSize="14sp" />
 
             <TextView
@@ -502,11 +502,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="@color/primary_dark"
+            android:background="@drawable/btn_hud_night"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:text="@string/debug_reset_avg_button"
-            android:textColor="@color/text_primary"
+            android:textColor="@color/accent"
             android:textSize="14sp" />
 
         <!-- Calibración del método de consumo por carga -->
@@ -544,11 +544,11 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="12dp"
-                android:background="@color/primary_dark"
+                android:background="@drawable/btn_hud_primary"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
                 android:text="@string/debug_calib_save_button"
-                android:textColor="@color/text_primary"
+                android:textColor="@color/on_accent"
                 android:textSize="14sp" />
         </LinearLayout>
 

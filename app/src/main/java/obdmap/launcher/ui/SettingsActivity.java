@@ -8,10 +8,12 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivitySettingsBinding;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.util.ButtonStyler;
 
 /**
  * Pantalla de Ajustes: menú de nivel superior. Solo navega a las distintas
@@ -32,6 +34,8 @@ public final class SettingsActivity extends AppCompatActivity {
         prefsManager = new PrefsManager(this);
         updateDebugOverlayLabel();
         binding.btnToggleDebugOverlay.setOnClickListener(v -> toggleDebugOverlay());
+        updateDayNightLabel();
+        binding.btnDayNight.setOnClickListener(v -> toggleDayNight());
 
         binding.btnBack.setOnClickListener(v -> finish());
         binding.btnBluetooth.setOnClickListener(
@@ -41,6 +45,8 @@ public final class SettingsActivity extends AppCompatActivity {
                 v -> startActivity(new Intent(this, ObdDebugActivity.class)));
         binding.btnInfo.setOnClickListener(
                 v -> startActivity(new Intent(this, InfoActivity.class)));
+
+        applyDayNightToUi();
     }
 
     @Override
@@ -59,6 +65,33 @@ public final class SettingsActivity extends AppCompatActivity {
         binding.btnToggleDebugOverlay.setText(prefsManager.isDebugOverlayEnabled()
                 ? R.string.settings_debug_overlay_on
                 : R.string.settings_debug_overlay_off);
+    }
+
+    private void toggleDayNight() {
+        prefsManager.setNightMode(!prefsManager.isNightMode());
+        updateDayNightLabel();
+        applyDayNightToUi();
+    }
+
+    /** Repinta fondo y botones según el modo día/noche guardado. */
+    private void applyDayNightToUi() {
+        boolean isNight = prefsManager.isNightMode();
+        binding.settingsRoot.setBackgroundColor(ContextCompat.getColor(this,
+                isNight ? R.color.background_dark : R.color.background_day));
+        ButtonStyler.applySecondary(binding.btnBluetooth, isNight);
+        ButtonStyler.applySecondary(binding.btnSystemSettings, isNight);
+        ButtonStyler.applySecondary(binding.btnObdDebug, isNight);
+        ButtonStyler.applySecondary(binding.btnInfo, isNight);
+        ButtonStyler.applySecondary(binding.btnToggleDebugOverlay, isNight);
+        ButtonStyler.applySecondary(binding.btnBack, isNight);
+        ButtonStyler.applySecondary(binding.btnDayNight, isNight);
+    }
+
+    /** Pone en el botón el modo al que se cambiará al pulsarlo. */
+    private void updateDayNightLabel() {
+        binding.btnDayNight.setText(prefsManager.isNightMode()
+                ? R.string.toggle_day_mode
+                : R.string.toggle_night_mode);
     }
 
     /** Abre los Ajustes del sistema; si no existe la app, avisa por Toast. */

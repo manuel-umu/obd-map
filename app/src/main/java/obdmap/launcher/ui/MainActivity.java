@@ -45,6 +45,7 @@ import obdmap.launcher.routing.RoutingManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
 import obdmap.launcher.update.UpdateManager;
+import obdmap.launcher.util.ButtonStyler;
 import obdmap.launcher.util.DayNightMode;
 import obdmap.launcher.util.ManeuverIcons;
 import obdmap.launcher.util.PositionPredictor;
@@ -185,7 +186,6 @@ public final class MainActivity extends AppCompatActivity
         binding.destConfirmCancelButton.setOnClickListener(v -> cancelPickedDestination());
         binding.destConfirmScrim.setOnClickListener(v -> cancelPickedDestination());
         binding.cancelRouteButton.setOnClickListener(v -> cancelActiveRoute());
-        binding.dayNightToggleButton.setOnClickListener(v -> toggleDayNight());
         binding.recenterButton.setOnClickListener(v -> recenterOnPosition());
 
         // Detectar movimiento manual en el mapa.
@@ -469,6 +469,7 @@ public final class MainActivity extends AppCompatActivity
                         && rmSnap.getHopper() != null) {
                     // Primero se confina el punto adelantado a la vía donde está el coche
                     predSnapped = roadMatcher.snapAhead(predictOut[0], predictOut[1],
+                            bearingDegrees, hasBearing,
                             RoadSnapper.MAX_SNAP_METERS, snapOut);
                     if (!predSnapped) {
                         predSnapped = leadMatcher.match(rmSnap.getHopper(),
@@ -659,6 +660,9 @@ public final class MainActivity extends AppCompatActivity
         }
         maybeStartObdService();
         applyDebugOverlayPref();
+        // El modo día/noche se cambia desde Ajustes: releerlo al volver al frente.
+        currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
+        applyDayNightToUi();
 
         // Comprobación de actualización OTA
         updateManager.checkOnStartup(this);
@@ -1073,18 +1077,14 @@ public final class MainActivity extends AppCompatActivity
         lastNavEta = null;
     }
 
-    private void toggleDayNight() {
-        currentDayNightMode = (currentDayNightMode == DayNightMode.NIGHT)
-                ? DayNightMode.DAY : DayNightMode.NIGHT;
-        prefsManager.setNightMode(currentDayNightMode == DayNightMode.NIGHT);
-        applyDayNightToUi();
-    }
-
     private void applyDayNightToUi() {
         boolean isNight = (currentDayNightMode == DayNightMode.NIGHT);
-        // El texto del botón muestra el modo al que se CAMBIARÁ al pulsarlo.
-        binding.dayNightToggleButton.setText(isNight
-                ? R.string.toggle_day_mode : R.string.toggle_night_mode);
+        // Botones sobre el mapa: son los únicos que ven el cambio de tema.
+        ButtonStyler.applySecondary(binding.appSettingsButton, isNight);
+        ButtonStyler.applySecondary(binding.cancelRouteButton, isNight);
+        ButtonStyler.applySecondary(binding.destConfirmCancelButton, isNight);
+        ButtonStyler.applyPrimary(binding.recenterButton);
+        ButtonStyler.applyPrimary(binding.destConfirmGoButton);
         // Fondo semitransparente del HUD: más oscuro de noche, gris claro de día.
         binding.hudContainer.setBackgroundColor(
                 isNight ? 0xCC101418 : 0xCCF5F5F5);
