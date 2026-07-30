@@ -201,11 +201,18 @@
     <string name="saved_place_coords">%1$.5f, %2$.5f</string>
     <!-- Mensaje del desplegable cuando no hay ningún sitio guardado. -->
     <string name="favorites_empty">No hay sitios guardados</string>
-    <!-- Diálogo de edición de un sitio guardado (pulsación larga en la lista). -->
+    <!-- Descripción del lápiz de cada fila de la lista. -->
+    <string name="favorites_item_edit_desc">Renombrar sitio</string>
+    <!-- Descripción de la papelera de cada fila de la lista. -->
+    <string name="favorites_item_delete_desc">Borrar sitio</string>
+    <!-- Diálogo de renombrado de un sitio guardado. -->
     <string name="favorites_edit_title">Sitio guardado</string>
     <string name="favorites_edit_save">Guardar</string>
-    <string name="favorites_edit_delete">Borrar</string>
     <string name="favorites_edit_cancel">Cancelar</string>
+    <!-- Diálogo de confirmación de borrado. %1$s = nombre del sitio. -->
+    <string name="favorites_delete_title">Borrar sitio</string>
+    <string name="favorites_delete_message">¿Borrar «%1$s» de los sitios guardados?</string>
+    <string name="favorites_delete_confirm">Borrar</string>
 
     <!-- HUD de navegación. -->
     <!-- Descripción de accesibilidad del icono de maniobra. -->

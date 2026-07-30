@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Fila de un sitio guardado en el desplegable de favoritos.
+    Nombre (rutar) + lápiz (renombrar) + papelera (borrar); el fondo lo pone el código.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:orientation="horizontal">
+
+    <Button
+        android:id="@+id/placeButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="@drawable/btn_hud_night"
+        android:minHeight="110dp"
+        android:textColor="@color/accent"
+        android:textSize="20sp" />
+
+    <ImageButton
+        android:id="@+id/placeEditButton"
+        android:layout_width="88dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/btn_hud_night"
+        android:contentDescription="@string/favorites_item_edit_desc"
+        android:src="@drawable/ic_edit"
+        android:tint="@color/accent" />
+
+    <ImageButton
+        android:id="@+id/placeDeleteButton"
+        android:layout_width="88dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/btn_hud_night"
+        android:contentDescription="@string/favorites_item_delete_desc"
+        android:src="@drawable/ic_delete"
+        android:tint="@color/accent" />
+
+</LinearLayout>

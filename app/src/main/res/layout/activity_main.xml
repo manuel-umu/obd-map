@@ -185,7 +185,7 @@
     <!-- Desplegable de sitios guardados; la lista se rellena en runtime al abrirlo. -->
     <LinearLayout
         android:id="@+id/favoritesPanel"
-        android:layout_width="320dp"
+        android:layout_width="420dp"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="16dp"

@@ -11,11 +11,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -78,10 +79,6 @@ public final class MainActivity extends AppCompatActivity
 
     // El HUD no necesita refrescarse por cada PID. Lo limitamos a 5 Hz.
     private static final long HUD_REFRESH_INTERVAL_MS = 200L;
-
-    // Alto mínimo y separación de los botones del desplegable de sitios, en dp.
-    private static final int FAVORITE_ITEM_MIN_HEIGHT_DP = 110;
-    private static final int FAVORITE_ITEM_MARGIN_DP = 8;
 
     private ActivityMainBinding binding;
     private PrefsManager prefsManager;
@@ -1108,10 +1105,14 @@ public final class MainActivity extends AppCompatActivity
         ButtonStyler.applySecondary(binding.appSettingsButton, isNight);
         ButtonStyler.applySecondary(binding.cancelRouteButton, isNight);
         ButtonStyler.applySecondary(binding.destConfirmCancelButton, isNight);
+        ButtonStyler.applySecondaryIcon(binding.favoritesButton, isNight);
+        ButtonStyler.applySecondaryIcon(binding.destFavoriteButton, isNight);
         ButtonStyler.applyPrimary(binding.recenterButton);
         ButtonStyler.applyPrimary(binding.destConfirmGoButton);
         // Fondo semitransparente del HUD: más oscuro de noche, gris claro de día.
         binding.hudContainer.setBackgroundColor(
+                isNight ? 0xCC101418 : 0xCCF5F5F5);
+        binding.favoritesPanel.setBackgroundColor(
                 isNight ? 0xCC101418 : 0xCCF5F5F5);
         // Tema del mapa VTM.
         if (mapManager != null) {
@@ -1290,7 +1291,7 @@ public final class MainActivity extends AppCompatActivity
         binding.favoritesPanel.setVisibility(View.VISIBLE);
     }
 
-    /** Rellena el desplegable con un botón por sitio. Camino frío: solo al abrirlo. */
+    /** Rellena el desplegable con una fila por sitio. Camino frío: solo al abrirlo. */
     private void rebuildFavoritesList() {
         if (binding == null) {
             return;
@@ -1309,29 +1310,27 @@ public final class MainActivity extends AppCompatActivity
         }
 
         boolean isNight = (currentDayNightMode == DayNightMode.NIGHT);
-        int minHeightPx = dpToPx(FAVORITE_ITEM_MIN_HEIGHT_DP);
-        int marginPx = dpToPx(FAVORITE_ITEM_MARGIN_DP);
+        LayoutInflater inflater = getLayoutInflater();
 
         for (int i = 0; i < places.size(); i++) {
             final int index = i;
             final SavedPlace place = places.get(i);
 
-            Button button = new Button(this);
-            button.setText(place.name);
-            button.setTextSize(20f);
-            button.setMinHeight(minHeightPx);
-            ButtonStyler.applySecondary(button, isNight);
-            button.setOnClickListener(v -> routeToSavedPlace(place));
-            button.setOnLongClickListener(v -> {
-                showFavoriteEditDialog(index, place);
-                return true;
-            });
+            View row = inflater.inflate(R.layout.item_saved_place, binding.favoritesList, false);
+            Button placeButton = row.findViewById(R.id.placeButton);
+            ImageButton editButton = row.findViewById(R.id.placeEditButton);
+            ImageButton deleteButton = row.findViewById(R.id.placeDeleteButton);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            params.bottomMargin = marginPx;
-            binding.favoritesList.addView(button, params);
+            placeButton.setText(place.name);
+            ButtonStyler.applySecondary(placeButton, isNight);
+            ButtonStyler.applySecondaryIcon(editButton, isNight);
+            ButtonStyler.applySecondaryIcon(deleteButton, isNight);
+
+            placeButton.setOnClickListener(v -> routeToSavedPlace(place));
+            editButton.setOnClickListener(v -> showFavoriteEditDialog(index, place));
+            deleteButton.setOnClickListener(v -> showFavoriteDeleteDialog(index, place));
+
+            binding.favoritesList.addView(row);
         }
     }
 
@@ -1349,7 +1348,7 @@ public final class MainActivity extends AppCompatActivity
         maybeCalculateRoute();
     }
 
-    /** Dialogo de renombrado y borrado de un sitio guardado. */
+    /** Diálogo de renombrado de un sitio guardado. */
     private void showFavoriteEditDialog(final int index, @NonNull SavedPlace place) {
         final EditText input = new EditText(this);
         input.setText(place.name);
@@ -1365,7 +1364,16 @@ public final class MainActivity extends AppCompatActivity
                     }
                     refreshFavoritesAfterEdit();
                 })
-                .setNeutralButton(R.string.favorites_edit_delete, (dialog, which) -> {
+                .setNegativeButton(R.string.favorites_edit_cancel, null)
+                .show();
+    }
+
+    /** Confirmación de borrado; un toque suelto conduciendo no debe perder un sitio. */
+    private void showFavoriteDeleteDialog(final int index, @NonNull SavedPlace place) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.favorites_delete_title)
+                .setMessage(getString(R.string.favorites_delete_message, place.name))
+                .setPositiveButton(R.string.favorites_delete_confirm, (dialog, which) -> {
                     savedPlacesStore.removeAt(index);
                     refreshFavoritesAfterEdit();
                 })
@@ -1378,9 +1386,5 @@ public final class MainActivity extends AppCompatActivity
         if (savedPlacesLayer != null) {
             savedPlacesLayer.setPlaces(savedPlacesStore.load());
         }
-    }
-
-    private int dpToPx(int dp) {
-        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 }
