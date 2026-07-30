@@ -135,7 +135,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="114dp"
+        android:layout_marginBottom="220dp"
         android:background="#B0000000"
         android:fontFamily="monospace"
         android:padding="12dp"
@@ -168,6 +168,46 @@
         android:textColor="@color/on_accent"
         android:textSize="18sp"
         android:visibility="gone" />
+
+    <!-- Corazón sobre el badge de velocidad: abre el desplegable de sitios guardados. -->
+    <ImageButton
+        android:id="@+id/favoritesButton"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="114dp"
+        android:background="@drawable/btn_hud_night"
+        android:contentDescription="@string/favorites_button_desc"
+        android:src="@drawable/ic_heart_filled"
+        android:tint="@color/accent" />
+
+    <!-- Desplegable de sitios guardados; la lista se rellena en runtime al abrirlo. -->
+    <LinearLayout
+        android:id="@+id/favoritesPanel"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="194dp"
+        android:background="#CC101418"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="300dp">
+
+            <LinearLayout
+                android:id="@+id/favoritesList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </ScrollView>
+
+    </LinearLayout>
 
     <!-- Capa transparente que cierra el panel de destino al tocar fuera de él. -->
     <View
@@ -206,6 +246,19 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:orientation="horizontal">
+
+            <!-- Toggle de guardado del punto elegido; no cierra el panel. -->
+            <ImageButton
+                android:id="@+id/destFavoriteButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/btn_hud_night"
+                android:contentDescription="@string/dest_favorite_desc"
+                android:minHeight="72dp"
+                android:minWidth="72dp"
+                android:src="@drawable/ic_heart_outline"
+                android:tint="@color/accent" />
 
             <Button
                 android:id="@+id/destConfirmGoButton"

@@ -49,6 +49,9 @@ public final class PrefsManager {
     // Prefijo de la versión de datos instalada, por región: se le concatena el id
     private static final String KEY_DATA_VERSION_PREFIX = "data_version_";
 
+    // Sitios guardados serializados: un registro por línea, campos lat;lon;nombre.
+    private static final String KEY_SAVED_PLACES = "saved_places";
+
     // ---------------------------------------------------------------------
     // Estado interno
     // ---------------------------------------------------------------------
@@ -135,6 +138,18 @@ public final class PrefsManager {
                 .remove(DEST_LAT_KEY)
                 .remove(DEST_LON_KEY)
                 .apply();
+    }
+
+    // ---------------------------------------------------------------------
+    // Sitios guardados (favoritos)
+    // ---------------------------------------------------------------------
+    @Nullable
+    public String getSavedPlacesRaw() {
+        return prefs.getString(KEY_SAVED_PLACES, null);
+    }
+
+    public void setSavedPlacesRaw(@Nullable String raw) {
+        prefs.edit().putString(KEY_SAVED_PLACES, raw).apply();
     }
 
     // ---------------------------------------------------------------------

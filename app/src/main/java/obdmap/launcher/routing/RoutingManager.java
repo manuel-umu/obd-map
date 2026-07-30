@@ -14,7 +14,10 @@ import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.ResponsePath;
 import com.graphhopper.config.Profile;
+import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.storage.index.LocationIndex;
+import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.util.Instruction;
 import com.graphhopper.util.InstructionList;
 import com.graphhopper.util.Parameters;
@@ -106,6 +109,30 @@ public final class RoutingManager {
     @Nullable
     public String getLastError() {
         return lastError;
+    }
+
+    /**
+     * Nombre de la vía más cercana al punto
+     */
+    @Nullable
+    public String nearestRoadName(double lat, double lon) {
+        GraphHopper gh = hopper;
+        if (state != STATE_READY || gh == null) {
+            return null;
+        }
+        LocationIndex index = gh.getLocationIndex();
+        if (index == null) {
+            return null;
+        }
+        QueryResult qr = index.findClosest(lat, lon, EdgeFilter.ALL_EDGES);
+        if (!qr.isValid()) {
+            return null;
+        }
+        String name = qr.getClosestEdge().getName();
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        return name;
     }
 
     /**

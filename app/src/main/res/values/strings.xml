@@ -192,6 +192,21 @@
     <!-- Unidad kilómetros, para distancias largas. -->
     <string name="unit_km">km</string>
 
+    <!-- Sitios guardados (favoritos) -->
+    <!-- Descripción del corazón que abre el desplegable de sitios guardados. -->
+    <string name="favorites_button_desc">Sitios guardados</string>
+    <!-- Descripción del corazón que guarda o quita el destino seleccionado. -->
+    <string name="dest_favorite_desc">Guardar este sitio</string>
+    <!-- Etiqueta por coordenadas cuando el grafo no da nombre de vía. %1$.5f = lat, %2$.5f = lon. -->
+    <string name="saved_place_coords">%1$.5f, %2$.5f</string>
+    <!-- Mensaje del desplegable cuando no hay ningún sitio guardado. -->
+    <string name="favorites_empty">No hay sitios guardados</string>
+    <!-- Diálogo de edición de un sitio guardado (pulsación larga en la lista). -->
+    <string name="favorites_edit_title">Sitio guardado</string>
+    <string name="favorites_edit_save">Guardar</string>
+    <string name="favorites_edit_delete">Borrar</string>
+    <string name="favorites_edit_cancel">Cancelar</string>
+
     <!-- HUD de navegación. -->
     <!-- Descripción de accesibilidad del icono de maniobra. -->
     <string name="nav_maneuver_icon_desc">Icono de maniobra</string>

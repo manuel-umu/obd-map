@@ -28,8 +28,11 @@ public final class RoadMatcher {
     /** Metros que un candidato no conectado debe mejorar sobre la pegada para contar como evidencia */
     private static final double SWITCH_MARGIN_M = 10.0;
 
-    /** Fixes consecutivos con evidencia sobre la misma arista candidata para cambiar de vía */
-    private static final int SWITCH_CONFIRM_FIXES = 3;
+    /** Tiempo con evidencia sobre la misma arista candidata para cambiar de vía */
+    private static final long SWITCH_CONFIRM_MS = 1200L;
+
+    /** Distancia máxima a la arista pegada para seguir adherido a ella */
+    private static final double KEEP_STICKY_METERS = 25.0;
 
     /** Tiempo sin match tras el cual se olvida la arista pegada */
     private static final long STICKY_TIMEOUT_MS = 5000L;
@@ -63,7 +66,7 @@ public final class RoadMatcher {
 
     /** Arista candidata acumulando evidencia para relevar a la pegada */
     private int pendingEdgeId = -1;
-    private int pendingCount = 0;
+    private long pendingSinceMs = 0L;
 
     /** Fixes seguidos en los que la arista pegada no admite el rumbo actual */
     private int wrongDirFixes = 0;
@@ -129,7 +132,7 @@ public final class RoadMatcher {
         QueryResult qr = index.findClosest(lat, lon, filter);
         boolean candidateValid = qr.isValid() && qr.getQueryDistance() <= maxMeters;
 
-        if (stickyEdgeId >= 0 && stickyDist <= maxMeters) {
+        if (stickyEdgeId >= 0 && stickyDist <= KEEP_STICKY_METERS) {
             boolean keepSticky;
             if (!candidateValid) {
                 keepSticky = true;
@@ -144,13 +147,11 @@ public final class RoadMatcher {
                     clearPending();
                     keepSticky = false;
                 } else if (qr.getQueryDistance() <= stickyDist - SWITCH_MARGIN_M) {
-                    if (candId == pendingEdgeId) {
-                        pendingCount++;
-                    } else {
+                    if (candId != pendingEdgeId) {
                         pendingEdgeId = candId;
-                        pendingCount = 1;
+                        pendingSinceMs = now;
                     }
-                    keepSticky = pendingCount < SWITCH_CONFIRM_FIXES;
+                    keepSticky = now - pendingSinceMs < SWITCH_CONFIRM_MS;
                 } else {
                     clearPending();
                     keepSticky = true;
@@ -330,7 +331,7 @@ public final class RoadMatcher {
 
     private void clearPending() {
         pendingEdgeId = -1;
-        pendingCount = 0;
+        pendingSinceMs = 0L;
     }
 
     @Nullable

@@ -13,15 +13,21 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 
 import obdmap.launcher.R;
@@ -34,9 +40,12 @@ import obdmap.launcher.map.MapFileLocator;
 import obdmap.launcher.map.MapManager;
 import obdmap.launcher.map.PositionLayer;
 import obdmap.launcher.map.RegionData;
+import obdmap.launcher.map.SavedPlacesLayer;
 import obdmap.launcher.obd.ObdPids;
 import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.prefs.SavedPlace;
+import obdmap.launcher.prefs.SavedPlacesStore;
 import obdmap.launcher.routing.NavigationTracker;
 import obdmap.launcher.routing.RoadMatcher;
 import obdmap.launcher.routing.RoadSnapper;
@@ -70,8 +79,13 @@ public final class MainActivity extends AppCompatActivity
     // El HUD no necesita refrescarse por cada PID. Lo limitamos a 5 Hz.
     private static final long HUD_REFRESH_INTERVAL_MS = 200L;
 
+    // Alto mínimo y separación de los botones del desplegable de sitios, en dp.
+    private static final int FAVORITE_ITEM_MIN_HEIGHT_DP = 110;
+    private static final int FAVORITE_ITEM_MARGIN_DP = 8;
+
     private ActivityMainBinding binding;
     private PrefsManager prefsManager;
+    private SavedPlacesStore savedPlacesStore;
 
     // Auto actualización OTA
     private final UpdateManager updateManager = new UpdateManager();
@@ -80,6 +94,7 @@ public final class MainActivity extends AppCompatActivity
     @Nullable private GpsManager gpsManager;
     @Nullable private PositionLayer positionLayer;
     @Nullable private DestinationPickerLayer destinationPickerLayer;
+    @Nullable private SavedPlacesLayer savedPlacesLayer;
     @Nullable private TtsManager ttsManager;
     @Nullable private NavVoiceAnnouncer navVoiceAnnouncer;
 
@@ -176,6 +191,7 @@ public final class MainActivity extends AppCompatActivity
         setContentView(binding.getRoot());
 
         prefsManager = new PrefsManager(this);
+        savedPlacesStore = new SavedPlacesStore(prefsManager);
         currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
         ttsManager = new TtsManager(this);
         navVoiceAnnouncer = new NavVoiceAnnouncer(this, ttsManager);
@@ -187,6 +203,8 @@ public final class MainActivity extends AppCompatActivity
         binding.destConfirmScrim.setOnClickListener(v -> cancelPickedDestination());
         binding.cancelRouteButton.setOnClickListener(v -> cancelActiveRoute());
         binding.recenterButton.setOnClickListener(v -> recenterOnPosition());
+        binding.destFavoriteButton.setOnClickListener(v -> togglePendingPickFavorite());
+        binding.favoritesButton.setOnClickListener(v -> toggleFavoritesPanel());
 
         // Detectar movimiento manual en el mapa.
         // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
@@ -331,6 +349,12 @@ public final class MainActivity extends AppCompatActivity
         mapManager = new MapManager();
         // Temas claro y oscuro
         mapManager.attachToView(binding.mapView, mapFile, getAssets());
+
+        // Antes de positionLayer: así la flecha del coche se dibuja sobre los corazones.
+        savedPlacesLayer = new SavedPlacesLayer(
+                binding.mapView.map(),
+                ContextCompat.getDrawable(this, R.drawable.ic_heart_filled));
+        savedPlacesLayer.setPlaces(savedPlacesStore.load());
 
         // PositionLayer necesita el Map de VTM para añadirse a las capas.
         positionLayer = new PositionLayer(
@@ -710,8 +734,9 @@ public final class MainActivity extends AppCompatActivity
             positionLayer.detach();
             positionLayer = null;
         }
-        // La capa de picker no tiene recursos propios que liberar; basta con anular la referencia.
+        // Ni el picker ni la capa de sitios tienen recursos propios que liberar.
         destinationPickerLayer = null;
+        savedPlacesLayer = null;
         if (mapManager != null) {
             mapManager.destroy();
             mapManager = null;
@@ -1142,8 +1167,10 @@ public final class MainActivity extends AppCompatActivity
             binding.destConfirmText.setText(R.string.dest_confirm_no_gps);
         }
 
+        binding.favoritesPanel.setVisibility(View.GONE);
         binding.destConfirmScrim.setVisibility(View.VISIBLE);
         binding.destConfirmPanel.setVisibility(View.VISIBLE);
+        updateFavoriteToggleIcon();
     }
 
     /**
@@ -1193,6 +1220,9 @@ public final class MainActivity extends AppCompatActivity
         if (destinationPickerLayer != null) {
             destinationPickerLayer.hidePin();
         }
+        if (binding != null) {
+            binding.favoritesPanel.setVisibility(View.GONE);
+        }
         // maybeCalculateRoute limpia ruta, tracker, voz y HUD al no haber destino.
         maybeCalculateRoute();
     }
@@ -1204,5 +1234,153 @@ public final class MainActivity extends AppCompatActivity
         }
         binding.cancelRouteButton.setVisibility(
                 currentRoute != null ? View.VISIBLE : View.GONE);
+    }
+
+    // ---------------------------------------------------------------------
+    // Sitios guardados (favoritos)
+    // ---------------------------------------------------------------------
+
+    /** Corazón relleno si el punto provisional ya está guardado, de contorno si no. */
+    private void updateFavoriteToggleIcon() {
+        if (binding == null) {
+            return;
+        }
+        boolean saved = !Double.isNaN(pendingPickLat) && !Double.isNaN(pendingPickLon)
+                && savedPlacesStore.isSaved(pendingPickLat, pendingPickLon);
+        binding.destFavoriteButton.setImageResource(
+                saved ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+    }
+
+    /** Guarda o descarta el punto provisional; el panel de destino sigue abierto. */
+    private void togglePendingPickFavorite() {
+        if (binding == null || Double.isNaN(pendingPickLat) || Double.isNaN(pendingPickLon)) {
+            return;
+        }
+        if (savedPlacesStore.isSaved(pendingPickLat, pendingPickLon)) {
+            savedPlacesStore.removeNear(pendingPickLat, pendingPickLon);
+        } else {
+            savedPlacesStore.add(new SavedPlace(pendingPickLat, pendingPickLon,
+                    placeNameFor(pendingPickLat, pendingPickLon)));
+        }
+        updateFavoriteToggleIcon();
+        if (savedPlacesLayer != null) {
+            savedPlacesLayer.setPlaces(savedPlacesStore.load());
+        }
+    }
+
+    /** Nombre de la vía más cercana; si el grafo no la conoce, las coordenadas. */
+    @NonNull
+    private String placeNameFor(double lat, double lon) {
+        String roadName = RoutingManager.getInstance().nearestRoadName(lat, lon);
+        if (roadName != null) {
+            return roadName;
+        }
+        return getString(R.string.saved_place_coords, lat, lon);
+    }
+
+    private void toggleFavoritesPanel() {
+        if (binding == null) {
+            return;
+        }
+        if (binding.favoritesPanel.getVisibility() == View.VISIBLE) {
+            binding.favoritesPanel.setVisibility(View.GONE);
+            return;
+        }
+        rebuildFavoritesList();
+        binding.favoritesPanel.setVisibility(View.VISIBLE);
+    }
+
+    /** Rellena el desplegable con un botón por sitio. Camino frío: solo al abrirlo. */
+    private void rebuildFavoritesList() {
+        if (binding == null) {
+            return;
+        }
+        binding.favoritesList.removeAllViews();
+
+        List<SavedPlace> places = savedPlacesStore.load();
+
+        if (places.isEmpty()) {
+            TextView emptyLabel = new TextView(this);
+            emptyLabel.setText(R.string.favorites_empty);
+            emptyLabel.setTextSize(20f);
+            emptyLabel.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+            binding.favoritesList.addView(emptyLabel);
+            return;
+        }
+
+        boolean isNight = (currentDayNightMode == DayNightMode.NIGHT);
+        int minHeightPx = dpToPx(FAVORITE_ITEM_MIN_HEIGHT_DP);
+        int marginPx = dpToPx(FAVORITE_ITEM_MARGIN_DP);
+
+        for (int i = 0; i < places.size(); i++) {
+            final int index = i;
+            final SavedPlace place = places.get(i);
+
+            Button button = new Button(this);
+            button.setText(place.name);
+            button.setTextSize(20f);
+            button.setMinHeight(minHeightPx);
+            ButtonStyler.applySecondary(button, isNight);
+            button.setOnClickListener(v -> routeToSavedPlace(place));
+            button.setOnLongClickListener(v -> {
+                showFavoriteEditDialog(index, place);
+                return true;
+            });
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.bottomMargin = marginPx;
+            binding.favoritesList.addView(button, params);
+        }
+    }
+
+    /** Fija el sitio como destino y lanza el cálculo, igual que confirmPickedDestination. */
+    private void routeToSavedPlace(@NonNull SavedPlace place) {
+        if (binding == null) {
+            return;
+        }
+        prefsManager.setDestination((float) place.lat, (float) place.lon);
+
+        lastCalculatedDestLat = Float.NaN;
+        lastCalculatedDestLon = Float.NaN;
+
+        binding.favoritesPanel.setVisibility(View.GONE);
+        maybeCalculateRoute();
+    }
+
+    /** Dialogo de renombrado y borrado de un sitio guardado. */
+    private void showFavoriteEditDialog(final int index, @NonNull SavedPlace place) {
+        final EditText input = new EditText(this);
+        input.setText(place.name);
+        input.setTextSize(20f);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.favorites_edit_title)
+                .setView(input)
+                .setPositiveButton(R.string.favorites_edit_save, (dialog, which) -> {
+                    String newName = input.getText().toString().trim();
+                    if (!newName.isEmpty()) {
+                        savedPlacesStore.rename(index, newName);
+                    }
+                    refreshFavoritesAfterEdit();
+                })
+                .setNeutralButton(R.string.favorites_edit_delete, (dialog, which) -> {
+                    savedPlacesStore.removeAt(index);
+                    refreshFavoritesAfterEdit();
+                })
+                .setNegativeButton(R.string.favorites_edit_cancel, null)
+                .show();
+    }
+
+    private void refreshFavoritesAfterEdit() {
+        rebuildFavoritesList();
+        if (savedPlacesLayer != null) {
+            savedPlacesLayer.setPlaces(savedPlacesStore.load());
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 }
