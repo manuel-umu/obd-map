@@ -20,6 +20,7 @@ import obdmap.launcher.obd.ObdState;
 import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.service.ObdService;
 import obdmap.launcher.service.ObdServiceListener;
+import obdmap.launcher.util.ThemeApplier;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -92,6 +93,7 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
     @Override
     protected void onStart() {
         super.onStart();
+        applyDayNightToUi();
 
         String mac = prefsManager.getObdMac();
         if (mac != null && !mac.isEmpty()) {
@@ -172,6 +174,11 @@ public final class ObdDebugActivity extends AppCompatActivity implements ObdServ
     // =========================================================================
     // Helpers de UI
     // =========================================================================
+
+    /** Repinta la pantalla según el modo día/noche; solo en onStart, nunca por tick. */
+    private void applyDayNightToUi() {
+        ThemeApplier.apply(binding.getRoot(), prefsManager.isNightMode());
+    }
 
     /** Pinta todos los campos con lo que tenga el servicio justo tras conectar. */
     private void refreshAllFields() {

@@ -22,7 +22,8 @@
             android:layout_height="wrap_content"
             android:background="@color/surface_dark"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="8dp"
+            android:tag="surface">
 
             <Button
                 android:id="@+id/debugBackButton"
@@ -70,6 +71,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_rpm_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -79,6 +81,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -95,6 +98,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_speed_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -104,6 +108,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -114,6 +119,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_speed_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -129,6 +135,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_load_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -138,6 +145,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -148,6 +156,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_load_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -163,6 +172,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_throttle_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -172,6 +182,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -182,6 +193,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_throttle_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -208,6 +220,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_coolant_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="20sp" />
 
@@ -217,6 +230,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -227,6 +241,7 @@
                 android:layout_marginStart="6dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_coolant_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -242,6 +257,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_iat_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="20sp" />
 
@@ -251,6 +267,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -261,6 +278,7 @@
                 android:layout_marginStart="6dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_iat_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -276,6 +294,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_map_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="20sp" />
 
@@ -285,6 +304,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -295,6 +315,7 @@
                 android:layout_marginStart="6dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_map_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -321,6 +342,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_pids_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="18sp" />
 
@@ -346,6 +368,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_fuelrate_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="20sp" />
 
@@ -355,6 +378,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -365,6 +389,7 @@
                 android:layout_marginStart="6dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_fuelrate_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -380,6 +405,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_fuel_method_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="18sp" />
 
@@ -405,6 +431,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_instant_lh_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -414,6 +441,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -424,6 +452,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_instant_lh_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -439,6 +468,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_instant_l100km_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -448,6 +478,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -458,6 +489,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_instant_l100km_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -473,6 +505,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_average_l100km_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="22sp" />
 
@@ -482,6 +515,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/debug_no_data"
+                android:tag="value"
                 android:textColor="@color/accent"
                 android:textSize="32sp"
                 android:textStyle="bold" />
@@ -492,6 +526,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="bottom"
                 android:text="@string/debug_average_l100km_unit"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="16sp" />
         </LinearLayout>
@@ -515,6 +550,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="@string/debug_calib_label"
+            android:tag="label"
             android:textColor="@color/text_secondary"
             android:textSize="18sp" />
 
@@ -547,6 +583,7 @@
                 android:background="@drawable/btn_hud_primary"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
+                android:tag="primary"
                 android:text="@string/debug_calib_save_button"
                 android:textColor="@color/on_accent"
                 android:textSize="14sp" />
@@ -574,6 +611,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/debug_state_label"
+                android:tag="label"
                 android:textColor="@color/text_secondary"
                 android:textSize="15sp" />
 
@@ -594,6 +632,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/debug_no_reading_yet"
+            android:tag="label"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 

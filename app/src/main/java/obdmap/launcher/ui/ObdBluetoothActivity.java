@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivityObdBluetoothBinding;
 import obdmap.launcher.prefs.PrefsManager;
+import obdmap.launcher.util.ThemeApplier;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -72,6 +73,20 @@ public final class ObdBluetoothActivity extends AppCompatActivity {
                 pairDevice(device);
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        applyDayNightToUi();
+    }
+
+    /** Repinta la pantalla según el modo día/noche guardado. */
+    private void applyDayNightToUi() {
+        boolean isNight = prefsManager.isNightMode();
+        ThemeApplier.apply(binding.getRoot(), isNight);
+        listAdapter.setNightMode(isNight);
+        listAdapter.notifyDataSetChanged();
     }
 
     @Override

@@ -10,15 +10,18 @@ import androidx.appcompat.app.AppCompatActivity;
 import obdmap.launcher.BuildConfig;
 import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivityInfoBinding;
+import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.update.UpdateChecker;
 import obdmap.launcher.update.UpdateInfo;
 import obdmap.launcher.update.UpdateManager;
+import obdmap.launcher.util.ThemeApplier;
 
 /**
  * Pantalla de Información
  */
 public final class InfoActivity extends AppCompatActivity {
     private ActivityInfoBinding binding;
+    private PrefsManager prefsManager;
     private final UpdateManager updateManager = new UpdateManager();
     @Nullable private UpdateInfo availableUpdate;
 
@@ -27,6 +30,8 @@ public final class InfoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityInfoBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        prefsManager = new PrefsManager(this);
 
         binding.infoVersionText.setText(getString(R.string.info_version_installed,
                 BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
@@ -41,11 +46,21 @@ public final class InfoActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        applyDayNightToUi();
+    }
+
+    @Override
     protected void onDestroy() {
         binding = null;
         super.onDestroy();
     }
 
+    /** Repinta la pantalla según el modo día/noche guardado. */
+    private void applyDayNightToUi() {
+        ThemeApplier.apply(binding.getRoot(), prefsManager.isNightMode());
+    }
 
     private void checkForUpdate() {
         availableUpdate = null;

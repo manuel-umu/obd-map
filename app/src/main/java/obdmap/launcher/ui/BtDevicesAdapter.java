@@ -32,12 +32,19 @@ final class BtDevicesAdapter extends BaseAdapter {
     // Colores precalculados (evita resolver resources por fila).
     private final int colorSelected;
     private final int colorBonded;
+    private final int colorBondedDay;
     private final int colorUnpaired;
     private final int colorBadgePaired;
     private final int colorBadgeUnpaired;
+    private final int colorName;
+    private final int colorNameDay;
+    private final int colorMac;
+    private final int colorMacDay;
 
     /** MAC seleccionada actualmente como adaptador OBD; null si ninguna. */
     @Nullable private String selectedMac;
+
+    private boolean nightMode = true;
 
     /**
      * @param context contexto de la Activity (para el inflater y los colores)
@@ -50,13 +57,22 @@ final class BtDevicesAdapter extends BaseAdapter {
 
         colorSelected = ContextCompat.getColor(context, R.color.primary_dark);
         colorBonded = ContextCompat.getColor(context, R.color.surface_dark);
+        colorBondedDay = ContextCompat.getColor(context, R.color.surface_day);
         colorUnpaired = ContextCompat.getColor(context, R.color.surface_unpaired);
         colorBadgePaired = ContextCompat.getColor(context, R.color.text_paired);
         colorBadgeUnpaired = ContextCompat.getColor(context, R.color.text_unpaired);
+        colorName = ContextCompat.getColor(context, R.color.text_primary);
+        colorNameDay = ContextCompat.getColor(context, R.color.text_primary_day);
+        colorMac = ContextCompat.getColor(context, R.color.text_secondary);
+        colorMacDay = ContextCompat.getColor(context, R.color.text_secondary_day);
     }
 
     void setSelectedMac(@Nullable String mac) {
         this.selectedMac = mac;
+    }
+
+    void setNightMode(boolean night) {
+        this.nightMode = night;
     }
 
     @Override
@@ -96,10 +112,16 @@ final class BtDevicesAdapter extends BaseAdapter {
         if (selected) {
             convertView.setBackgroundColor(colorSelected);
         } else if (bonded) {
-            convertView.setBackgroundColor(colorBonded);
+            convertView.setBackgroundColor(nightMode ? colorBonded : colorBondedDay);
         } else {
             convertView.setBackgroundColor(colorUnpaired);
         }
+
+        // Solo la fila emparejada sin seleccionar sigue el tema; las otras dos
+        // conservan su fondo oscuro con significado y piden texto claro.
+        boolean lightText = nightMode || selected || !bonded;
+        holder.nameView.setTextColor(lightText ? colorName : colorNameDay);
+        holder.macView.setTextColor(lightText ? colorMac : colorMacDay);
 
         if (bonded) {
             holder.bondBadge.setText(R.string.settings_badge_paired);

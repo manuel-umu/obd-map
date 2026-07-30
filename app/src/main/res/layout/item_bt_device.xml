@@ -26,12 +26,14 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Etiqueta "Emparejado" (verde) o "Sin emparejar" (amarillo). -->
+        <!-- Etiqueta "Emparejado" (verde) o "Sin emparejar" (amarillo).
+             Colores con significado: no siguen el modo día/noche. -->
         <TextView
             android:id="@+id/deviceBondBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
+            android:tag="skip"
             android:background="@color/surface_dark"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"

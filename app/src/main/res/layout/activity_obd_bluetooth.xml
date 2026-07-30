@@ -18,7 +18,8 @@
         android:layout_height="wrap_content"
         android:background="@color/surface_dark"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:padding="8dp"
+        android:tag="surface">
 
         <Button
             android:id="@+id/backButton"
@@ -53,6 +54,7 @@
         android:layout_margin="16dp"
         android:background="@color/surface_dark"
         android:padding="16dp"
+        android:tag="surface|value"
         android:text="@string/settings_none_selected"
         android:textColor="@color/accent"
         android:textSize="17sp" />
@@ -64,11 +66,13 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="4dp"
+        android:tag="label"
         android:text="@string/settings_section_devices"
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
-    <!-- ListView clásico: sin dependencia extra, mínimo overhead. -->
+    <!-- ListView clásico: sin dependencia extra, mínimo overhead.
+         Marcado "skip": las filas las colorea BtDevicesAdapter, no el tema. -->
     <ListView
         android:id="@+id/pairedDevicesList"
         android:layout_width="match_parent"
@@ -76,6 +80,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_weight="1"
+        android:tag="skip"
         android:divider="@color/surface_dark"
         android:dividerHeight="1dp"
         android:scrollbars="vertical" />
@@ -89,6 +94,7 @@
         android:layout_marginEnd="16dp"
         android:layout_weight="1"
         android:gravity="center"
+        android:tag="label"
         android:textColor="@color/text_secondary"
         android:textSize="15sp"
         android:visibility="gone" />
@@ -110,6 +116,7 @@
             android:layout_marginEnd="8dp"
             android:background="@drawable/btn_hud_primary"
             android:minHeight="64dp"
+            android:tag="primary"
             android:text="@string/settings_scan_button"
             android:textColor="@color/on_accent"
             android:textSize="16sp"
