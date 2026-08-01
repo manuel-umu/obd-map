@@ -124,7 +124,7 @@
     <string name="debug_pid_no">✗</string>
 
     <!-- Calibración del método de consumo por carga -->
-    <string name="debug_calib_label">Calibración qMax (mg/carrera):</string>
+    <string name="debug_calib_label">qMax (mg/carrera a plena carga en pico par):</string>
     <string name="debug_calib_save_button">Guardar</string>
     <string name="debug_calib_saved">Calibración guardada</string>
     <string name="debug_calib_invalid">Valor de calibración no válido</string>

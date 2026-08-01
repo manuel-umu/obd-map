@@ -42,8 +42,14 @@ public final class FuelCalculator {
     /** Cilindros del motor (Hyundai Sonata 2.0 CRDi). */
     private static final int CYLINDERS = 4;
 
-    /** Calibración por defecto del método de carga, en mg de gasoil por carrera. */
-    public static final float DEFAULT_FULL_LOAD_MG_PER_STROKE = 55.0f;
+    /** Calibración por defecto: mg de gasoil por carrera a plena carga en el pico de par. */
+    public static final float DEFAULT_FULL_LOAD_MG_PER_STROKE = 44.0f;
+
+    /** Puntos de ruptura en rpm de la curva de gasoil máximo admisible. */
+    private static final float[] MAX_FUEL_SHAPE_RPM = {800.0f, 2000.0f, 2800.0f, 4500.0f};
+
+    /** Factor de gasoil máximo en cada punto de ruptura, normalizado a 1.0 en el pico de par. */
+    private static final float[] MAX_FUEL_SHAPE_FACTOR = {0.55f, 1.00f, 1.00f, 0.82f};
 
     // -------------------------------------------------------------------------
     // Constantes de comportamiento
@@ -93,7 +99,7 @@ public final class FuelCalculator {
     /** Soporte declarado de 015E. Solo tiene sentido con pidAvailabilityKnown. */
     private volatile boolean fuelRateAvailable = false;
 
-    /** Constante de calibración del método de carga, en mg por carrera. */
+    /** Calibración del método de carga: mg de gasoil por carrera a plena carga en el pico de par. */
     private volatile float fullLoadMgPerStroke = DEFAULT_FULL_LOAD_MG_PER_STROKE;
 
     // -------------------------------------------------------------------------
@@ -170,7 +176,7 @@ public final class FuelCalculator {
         }
     }
 
-    /** Calibración del método de carga, en mg de gasoil por carrera a plena carga. */
+    /** Calibración del método de carga: mg de gasoil por carrera a plena carga en el pico de par. */
     public void setFullLoadMgPerStroke(float mgPerStroke) {
         if (mgPerStroke > 0.0f) {
             fullLoadMgPerStroke = mgPerStroke;
@@ -404,9 +410,29 @@ public final class FuelCalculator {
         if (loadPercent < 0 || rpm <= 0) {
             return NO_DATA;
         }
-        float mgPerMinute = (loadPercent / 100.0f) * fullLoadMgPerStroke
+        float mgPerMinute = (loadPercent / 100.0f) * fullLoadMgPerStroke * maxFuelShape(rpm)
                 * CYLINDERS * (rpm / 2.0f);
         return mgPerMinute * 60.0f / (1000.0f * DENSIDAD_DIESEL);
+    }
+
+    /**
+     * Factor de gasoil máximo admisible según el régimen, 1.0 en el pico de par.
+     * Interpolación lineal entre puntos de ruptura; fuera del rango, el extremo.
+     */
+    private static float maxFuelShape(int rpm) {
+        int last = MAX_FUEL_SHAPE_RPM.length - 1;
+        if (rpm <= MAX_FUEL_SHAPE_RPM[0]) {
+            return MAX_FUEL_SHAPE_FACTOR[0];
+        }
+        for (int i = 1; i <= last; i++) {
+            if (rpm <= MAX_FUEL_SHAPE_RPM[i]) {
+                float t = (rpm - MAX_FUEL_SHAPE_RPM[i - 1])
+                        / (MAX_FUEL_SHAPE_RPM[i] - MAX_FUEL_SHAPE_RPM[i - 1]);
+                return MAX_FUEL_SHAPE_FACTOR[i - 1]
+                        + t * (MAX_FUEL_SHAPE_FACTOR[i] - MAX_FUEL_SHAPE_FACTOR[i - 1]);
+            }
+        }
+        return MAX_FUEL_SHAPE_FACTOR[last];
     }
 
     /**
