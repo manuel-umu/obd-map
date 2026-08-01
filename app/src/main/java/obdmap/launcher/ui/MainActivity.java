@@ -81,6 +81,12 @@ public final class MainActivity extends AppCompatActivity
     // El HUD no necesita refrescarse por cada PID. Lo limitamos a 5 Hz.
     private static final long HUD_REFRESH_INTERVAL_MS = 200L;
 
+    // Periodo mínimo entre escrituras de la última posición: apply() reescribe el XML entero.
+    private static final long POSITION_SAVE_INTERVAL_MS = 5000L;
+
+    // Fracción de la altura de la vista donde VTM dibuja el coche (setMapViewCenter 0.5).
+    private static final float CAR_SCREEN_Y_RATIO = 0.75f;
+
     private ActivityMainBinding binding;
     private PrefsManager prefsManager;
     private SavedPlacesStore savedPlacesStore;
@@ -110,6 +116,11 @@ public final class MainActivity extends AppCompatActivity
     // Última posición conocida
     private double lastLat = Double.NaN;
     private double lastLon = Double.NaN;
+
+    // Última posición GPS cruda y momento en que se persistió por última vez.
+    private double lastRawLat = Double.NaN;
+    private double lastRawLon = Double.NaN;
+    private long lastPositionSaveMs = 0L;
 
     // Buffer para el resultado del snap-to-road
     private final double[] snapOut = new double[2];
@@ -213,6 +224,11 @@ public final class MainActivity extends AppCompatActivity
             // Devolvemos false para que VTM siga procesando el gesto normalmente.
             return false;
         });
+
+        // La flecha overlay se recoloca con cada layout del mapa (arranque, rotación).
+        binding.mapView.addOnLayoutChangeListener(
+                (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom)
+                        -> placeCarArrowOverlay());
 
         applyHudVisibility();
         applyDayNightToUi();
@@ -353,6 +369,8 @@ public final class MainActivity extends AppCompatActivity
         positionLayer = new PositionLayer(
                 binding.mapView.map(),
                 ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
+        positionLayer.setOverlayArrow(binding.carArrowOverlay);
+        placeCarArrowOverlay();
 
         // Capa de selección de destino por long-press. Se añade encima del resto
         // para recibir el gesto antes que otras capas.
@@ -405,9 +423,13 @@ public final class MainActivity extends AppCompatActivity
         double useLat = latitude;
         double useLon = longitude;
 
+        // Semilla de búsqueda para los snaps: es el índice del fix ANTERIOR porque
+        // navigationTracker.update() se llama al final de este método. Es lo correcto.
+        int segHint = navigationTracker.getCurrentSegmentIndex();
+
         if (currentRoute != null
                 && RoadSnapper.snapToRoute(currentRoute, latitude, longitude,
-                                           RoadSnapper.MAX_SNAP_METERS, snapOut)) {
+                                           RoadSnapper.MAX_SNAP_METERS, segHint, snapOut)) {
             useLat = snapOut[0];
             useLon = snapOut[1];
         } else {
@@ -464,7 +486,7 @@ public final class MainActivity extends AppCompatActivity
                 // Con ruta activa: proyectar sobre la polilínea de la ruta.
                 predSnapped = RoadSnapper.snapToRoute(currentRoute,
                         predictOut[0], predictOut[1],
-                        RoadSnapper.MAX_SNAP_METERS, snapOut);
+                        RoadSnapper.MAX_SNAP_METERS, segHint, snapOut);
             }
             if (!predSnapped) {
                 // Sin ruta
@@ -532,7 +554,9 @@ public final class MainActivity extends AppCompatActivity
         binding.statusText.setVisibility(View.GONE);
         // Se guarda la posición GPS CRUDA (no la predicha) para que al relanzar
         // la app el mapa arranque desde donde el coche estaba realmente.
-        prefsManager.setLastPosition((float) latitude, (float) longitude);
+        lastRawLat = latitude;
+        lastRawLon = longitude;
+        saveLastPositionThrottled();
 
         // Actualizar el badge de velocidad con la lectura GPS más reciente.
         binding.speedBadge.setSpeed(speedMs);
@@ -540,6 +564,16 @@ public final class MainActivity extends AppCompatActivity
         // Intentar calcular la ruta si hay destino y el grafo está disponible.
         maybeCalculateRoute();
     }
+    /** Persiste la última posición como mucho una vez cada POSITION_SAVE_INTERVAL_MS. */
+    private void saveLastPositionThrottled() {
+        long now = SystemClock.elapsedRealtime();
+        if (lastPositionSaveMs != 0L && (now - lastPositionSaveMs) < POSITION_SAVE_INTERVAL_MS) {
+            return;
+        }
+        lastPositionSaveMs = now;
+        prefsManager.setLastPosition((float) lastRawLat, (float) lastRawLon);
+    }
+
     private void updateDebugOverlay(double rawLat, double rawLon,
                                     double snapLat, double snapLon,
                                     double renderLat, double renderLon) {
@@ -695,6 +729,11 @@ public final class MainActivity extends AppCompatActivity
         if (gpsManager != null) {
             gpsManager.stop();
         }
+        // La escritura por fix va limitada: al salir se guarda el último fix sí o sí.
+        if (!Double.isNaN(lastRawLat)) {
+            lastPositionSaveMs = SystemClock.elapsedRealtime();
+            prefsManager.setLastPosition((float) lastRawLat, (float) lastRawLon);
+        }
         // Notificar a VTM que la Activity va al fondo (pausa el renderer GL).
         if (mapManager != null) {
             mapManager.onPause();
@@ -756,6 +795,27 @@ public final class MainActivity extends AppCompatActivity
         if (!Double.isNaN(lastLat) && mapManager != null) {
             mapManager.centerAt(lastLat, lastLon);
         }
+    }
+
+    /**
+     * Baja la flecha overlay hasta el punto de la pantalla donde VTM dibuja el coche.
+     * Solo en cada layout del mapa, nunca por frame.
+     */
+    private void placeCarArrowOverlay() {
+        if (binding == null) {
+            return;
+        }
+        int mapHeight = binding.mapView.getHeight();
+        if (mapHeight == 0) {
+            return;
+        }
+        View arrow = binding.carArrowOverlay;
+        int arrowHeight = arrow.getHeight();
+        if (arrowHeight <= 0) {
+            // Empieza GONE, así que puede no estar medida: su alto de layout es fijo.
+            arrowHeight = arrow.getLayoutParams().height;
+        }
+        arrow.setTranslationY(mapHeight * CAR_SCREEN_Y_RATIO - arrowHeight / 2f);
     }
 
     private void applyHudVisibility() {

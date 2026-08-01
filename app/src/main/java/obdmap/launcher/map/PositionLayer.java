@@ -2,8 +2,10 @@ package obdmap.launcher.map;
 
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
+import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.oscim.android.canvas.AndroidBitmap;
 import org.oscim.core.GeoPoint;
@@ -35,6 +37,11 @@ public final class PositionLayer implements Map.UpdateListener {
 
     /** Signo de la rotación del símbolo */
     private static final float ROTATION_SIGN = 1f;
+
+    /** Modos de dibujo de la flecha: marcador dentro de VTM o View encima del mapa. */
+    private static final int MODE_MARKER = 0;
+    private static final int MODE_OVERLAY = 1;
+
     private final Map vtmMap;
     private final ItemizedLayer markerLayer;
     private final MarkerItem carMarker;
@@ -75,6 +82,13 @@ public final class PositionLayer implements Map.UpdateListener {
 
     // Último ángulo de pantalla publicado al símbolo, en grados enteros [0, 360).
     private int lastPublishedAngle = Integer.MIN_VALUE;
+
+    // Flecha dibujada como View encima del mapa; sustituye al marcador en modo centrado.
+    @Nullable
+    private View overlayArrow;
+
+    // Modo aplicado a las vistas: -1 sin aplicar, 0 marcador VTM, 1 flecha overlay.
+    private int appliedMode = -1;
 
     /**
      * @param map           mapa VTM al que se añade la capa
@@ -188,20 +202,37 @@ public final class PositionLayer implements Map.UpdateListener {
     }
 
     /**
-     * Callback de {@link Map.UpdateListener}. Se llama en el hilo principal
-     * al inicio de cada frame que VTM va a renderizar.
+     * Fija la View que hace de flecha en modo centrado.
      *
-     * <p>Cuando {@code autoCenter=true}: el evento {@link Map#POSITION_EVENT}
-     * llega justo DESPUÉS de que el Animator de VTM haya aplicado su interpolación
-     * al viewport. El {@code mapPosition} que recibimos YA tiene la posición interpolada
-     * del frame actual. Copiamos esa posición al marcador.
-     * <p>Cuando {@code autoCenter=false}: calculamos nuestra propia interpolación
-     * lineal en función del tiempo transcurrido desde el último fix.
+     * @param arrow ImageView del layout, o null para volver siempre al marcador VTM
+     */
+    public void setOverlayArrow(@Nullable View arrow) {
+        overlayArrow = arrow;
+    }
+
+    /**
+     * Callback de {@link Map.UpdateListener}, una vez por frame en el hilo principal.
+     *
+     * <p>Con {@code autoCenter=true} el coche cae siempre en el mismo punto de la
+     * pantalla, así que solo se rota la flecha overlay: ni marcador ni populate().
+     * <p>Con {@code autoCenter=false} el marcador VTM interpola su propia posición
+     * en función del tiempo transcurrido desde el último fix.
      */
     @Override
     public void onMapEvent(Event e, MapPosition mapPosition) {
         if (Double.isNaN(fromX)) {
             // Sin fix GPS todavía, nada que interpolar.
+            return;
+        }
+
+        int mode = (autoCenter && overlayArrow != null) ? MODE_OVERLAY : MODE_MARKER;
+        if (mode != appliedMode) {
+            appliedMode = mode;
+            applyMode(mode);
+        }
+
+        if (mode == MODE_OVERLAY) {
+            updateOverlayArrow(mapPosition);
             return;
         }
 
@@ -232,12 +263,7 @@ public final class PositionLayer implements Map.UpdateListener {
         // Orientación de la flecha en pantalla, redondeada a grados enteros.
         int screenAngleDeg = lastPublishedAngle;
         if (hasBearingValue) {
-            float screenAngle = lastBearingDeg + mapPosition.bearing;
-            screenAngle %= 360f;
-            if (screenAngle < 0f) {
-                screenAngle += 360f;
-            }
-            screenAngleDeg = Math.round(screenAngle) % 360;
+            screenAngleDeg = screenAngleFor(mapPosition);
         }
 
         boolean positionChanged = latE6 != lastPublishedLatE6 || lonE6 != lastPublishedLonE6;
@@ -261,6 +287,44 @@ public final class PositionLayer implements Map.UpdateListener {
 
         // Notifica al MarkerRenderer que los InternalItem.px/py han cambiado.
         markerLayer.populate();
+    }
+
+    /** Conmuta marcador VTM y flecha overlay. Solo en la transición de modo. */
+    private void applyMode(int mode) {
+        boolean overlay = (mode == MODE_OVERLAY);
+        markerLayer.setEnabled(!overlay);
+        if (overlayArrow != null) {
+            overlayArrow.setVisibility(overlay ? View.VISIBLE : View.GONE);
+        }
+        // El destino de la posición y del ángulo cambia: los valores publicados
+        // pertenecen al modo anterior y hay que reenviarlos al nuevo.
+        lastPublishedLatE6 = Integer.MIN_VALUE;
+        lastPublishedLonE6 = Integer.MIN_VALUE;
+        lastPublishedAngle = Integer.MIN_VALUE;
+    }
+
+    /** Rota la View de la flecha; no reserva objetos ni toca VTM. */
+    private void updateOverlayArrow(MapPosition mapPosition) {
+        View arrow = overlayArrow;
+        if (arrow == null || !hasBearingValue) {
+            return;
+        }
+        int screenAngleDeg = screenAngleFor(mapPosition);
+        if (screenAngleDeg == lastPublishedAngle) {
+            return;
+        }
+        lastPublishedAngle = screenAngleDeg;
+        arrow.setRotation(ROTATION_SIGN * screenAngleDeg);
+    }
+
+    /** Ángulo de la flecha en pantalla, en grados enteros [0, 360). */
+    private int screenAngleFor(MapPosition mapPosition) {
+        float screenAngle = lastBearingDeg + mapPosition.bearing;
+        screenAngle %= 360f;
+        if (screenAngle < 0f) {
+            screenAngle += 360f;
+        }
+        return Math.round(screenAngle) % 360;
     }
 
     public void detach() {

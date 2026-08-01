@@ -11,6 +11,12 @@ public final class NavigationTracker {
 
     private static final double METERS_PER_DEG = 111320.0;
 
+    /** Segmentos a cada lado del último proyectado que se exploran antes del barrido completo. */
+    private static final int SEARCH_WINDOW_SEGMENTS = 150;
+
+    /** Si la ventana no encuentra nada más cerca de esto, se hace el barrido completo. */
+    private static final double WINDOW_ACCEPT_METERS = 60.0;
+
     // ------------------------------------------------------------------
     // Estado de la ruta activa
     // ------------------------------------------------------------------
@@ -33,6 +39,14 @@ public final class NavigationTracker {
      * Se guarda para ahorrar calculo.
      */
     private double[] segLen;
+
+    /** Índice del segmento sobre el que se proyectó el último update(); -1 si no hay. */
+    private int lastSegmentIndex = -1;
+
+    // Salida del último scanSegments(): distancia al cuadrado, arco y segmento.
+    private double scanBestDistSq;
+    private double scanBestArcDist;
+    private int scanBestIndex;
 
     // ------------------------------------------------------------------
     // Resultado público del último update()
@@ -69,6 +83,7 @@ public final class NavigationTracker {
      */
     public void setRoute(@Nullable Route route) {
         currentRoute = route;
+        lastSegmentIndex = -1;
 
         if (route == null || route.pointCount() < 2) {
             arcDist = null;
@@ -157,6 +172,16 @@ public final class NavigationTracker {
         }
     }
 
+    /**
+     * Índice del segmento de la polilínea donde cayó la última proyección.
+     * Sirve de semilla para acotar la búsqueda de otros consumidores de la ruta.
+     *
+     * @return índice del segmento, o -1 si aún no se ha proyectado nada
+     */
+    public int getCurrentSegmentIndex() {
+        return lastSegmentIndex;
+    }
+
     // ------------------------------------------------------------------
     // Métodos privados de ayuda
     // ------------------------------------------------------------------
@@ -201,24 +226,46 @@ public final class NavigationTracker {
      * Proyecta el punto (lat, lon) sobre la polilínea de la ruta activa y devuelve
      * la distancia de arco en metros desde el origen de la ruta hasta el punto proyectado.
      *
-     * Misma aritmética que RoadSnapper para coherencia: coordenadas locales con cosLat.
-     * No crea objetos.
+     * Explora primero una ventana alrededor del segmento anterior; solo cae al barrido
+     * completo si ahí no encuentra nada cerca (recálculo tras salirse de la ruta).
      *
      * @return distancia de arco en metros del punto proyectado (>= 0)
      */
     private double projectOnRoute(double lat, double lon) {
         Route route = currentRoute;
         double cosLat = Math.cos(Math.toRadians(lat));
+        int lastSeg = route.pointCount() - 2;
 
+        if (lastSegmentIndex >= 0) {
+            int from = Math.max(0, lastSegmentIndex - SEARCH_WINDOW_SEGMENTS);
+            int to = Math.min(lastSeg, lastSegmentIndex + SEARCH_WINDOW_SEGMENTS);
+            scanSegments(route, lat, lon, cosLat, from, to);
+            if (Math.sqrt(scanBestDistSq) * METERS_PER_DEG <= WINDOW_ACCEPT_METERS) {
+                lastSegmentIndex = scanBestIndex;
+                return scanBestArcDist;
+            }
+        }
+
+        scanSegments(route, lat, lon, cosLat, 0, lastSeg);
+        lastSegmentIndex = scanBestIndex;
+        return scanBestArcDist;
+    }
+
+    /**
+     * Recorre los segmentos [from, to] y deja el mejor en los campos scanBest*.
+     * Misma aritmética que RoadSnapper: coordenadas locales con cosLat. No crea objetos.
+     */
+    private void scanSegments(Route route, double lat, double lon, double cosLat,
+                              int from, int to) {
         // Coordenadas locales del punto GPS en espacio métrico aproximado
         double px = lon * cosLat;
         double py = lat;
 
-        double bestDistSq = Double.MAX_VALUE;
-        double bestArcDist = 0.0;
+        scanBestDistSq = Double.MAX_VALUE;
+        scanBestArcDist = 0.0;
+        scanBestIndex = from;
 
-        int n = route.pointCount();
-        for (int i = 0; i < n - 1; i++) {
+        for (int i = from; i <= to; i++) {
             double ax = route.lons[i] * cosLat;
             double ay = route.lats[i];
             double bx = route.lons[i + 1] * cosLat;
@@ -250,13 +297,12 @@ public final class NavigationTracker {
             double distLon = (qx - px);
             double distSq = distLat * distLat + distLon * distLon;
 
-            if (distSq < bestDistSq) {
-                bestDistSq = distSq;
+            if (distSq < scanBestDistSq) {
+                scanBestDistSq = distSq;
                 // Distancia de arco del punto proyectado = arcDist del vértice i + fracción del segmento
-                bestArcDist = arcDist[i] + t * segLen[i];
+                scanBestArcDist = arcDist[i] + t * segLen[i];
+                scanBestIndex = i;
             }
         }
-
-        return bestArcDist;
     }
 }

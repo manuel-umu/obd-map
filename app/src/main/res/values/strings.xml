@@ -214,6 +214,9 @@
     <string name="favorites_delete_message">¿Borrar «%1$s» de los sitios guardados?</string>
     <string name="favorites_delete_confirm">Borrar</string>
 
+    <!-- Descripción de accesibilidad de la flecha del coche. -->
+    <string name="car_arrow_desc">Posición del coche</string>
+
     <!-- HUD de navegación. -->
     <!-- Descripción de accesibilidad del icono de maniobra. -->
     <string name="nav_maneuver_icon_desc">Icono de maniobra</string>

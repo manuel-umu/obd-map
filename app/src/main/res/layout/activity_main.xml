@@ -20,6 +20,17 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Flecha del coche en modo centrado: una View fija sobre el mapa.
+         MainActivity la coloca al 75% de la altura, que es donde cae el coche. -->
+    <ImageView
+        android:id="@+id/carArrowOverlay"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|center_horizontal"
+        android:contentDescription="@string/car_arrow_desc"
+        android:src="@drawable/ic_position_arrow"
+        android:visibility="gone" />
+
     <!--
         Panel de navegación superior (HUD de maniobra).
         Solo visible cuando hay ruta activa y próxima maniobra.
