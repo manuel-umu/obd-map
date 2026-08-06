@@ -3,10 +3,8 @@ package obdmap.launcher.map;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.view.View;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import org.oscim.android.canvas.AndroidBitmap;
 import org.oscim.core.GeoPoint;
 import org.oscim.core.MapPosition;
@@ -17,9 +15,9 @@ import org.oscim.layers.marker.MarkerInterface;
 import org.oscim.layers.marker.MarkerItem;
 import org.oscim.layers.marker.MarkerSymbol;
 import org.oscim.map.Map;
-
 import java.util.ArrayList;
 import java.util.List;
+import obdmap.launcher.util.PerfMonitor;
 
 /**
  * Capa VTM que muestra la flecha del coche como marcador.
@@ -89,6 +87,10 @@ public final class PositionLayer implements Map.UpdateListener {
 
     // Modo aplicado a las vistas: -1 sin aplicar, 0 marcador VTM, 1 flecha overlay.
     private int appliedMode = -1;
+
+    // Debug de rendimiento
+    @Nullable
+    private PerfMonitor perfMonitor;
 
     /**
      * @param map           mapa VTM al que se añade la capa
@@ -211,6 +213,15 @@ public final class PositionLayer implements Map.UpdateListener {
     }
 
     /**
+     * Fija el monitor que cuenta los eventos de mapa.
+     *
+     * @param monitor monitor de rendimiento, o null para no contar nada
+     */
+    public void setPerfMonitor(@Nullable PerfMonitor monitor) {
+        perfMonitor = monitor;
+    }
+
+    /**
      * Callback de {@link Map.UpdateListener}, una vez por frame en el hilo principal.
      *
      * <p>Con {@code autoCenter=true} el coche cae siempre en el mismo punto de la
@@ -220,6 +231,9 @@ public final class PositionLayer implements Map.UpdateListener {
      */
     @Override
     public void onMapEvent(Event e, MapPosition mapPosition) {
+        if (perfMonitor != null) {
+            perfMonitor.countMapEvent();
+        }
         if (Double.isNaN(fromX)) {
             // Sin fix GPS todavía, nada que interpolar.
             return;

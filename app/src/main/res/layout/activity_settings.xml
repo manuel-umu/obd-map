@@ -100,6 +100,18 @@
                 android:textColor="@color/accent"
                 android:textSize="20sp" />
 
+            <!-- Fila 4: toggle del overlay de diagnóstico de rendimiento. -->
+            <Button
+                android:id="@+id/btnTogglePerfOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/btn_hud_night"
+                android:minHeight="110dp"
+                android:text="@string/settings_perf_overlay_off"
+                android:textColor="@color/accent"
+                android:textSize="20sp" />
+
         </LinearLayout>
     </ScrollView>
 
@@ -129,7 +141,7 @@
         android:minWidth="160dp"
         android:paddingStart="28dp"
         android:paddingEnd="28dp"
-        android:text="@string/toggle_night_mode"
+        android:text="@string/day_night_auto"
         android:textColor="@color/accent"
         android:textSize="18sp" />
 

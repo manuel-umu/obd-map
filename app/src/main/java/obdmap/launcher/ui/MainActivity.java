@@ -59,6 +59,7 @@ import obdmap.launcher.util.BearingPredictor;
 import obdmap.launcher.util.ButtonStyler;
 import obdmap.launcher.util.DayNightMode;
 import obdmap.launcher.util.ManeuverIcons;
+import obdmap.launcher.util.PerfMonitor;
 import obdmap.launcher.util.PositionPredictor;
 import obdmap.launcher.voice.NavVoiceAnnouncer;
 import obdmap.launcher.voice.TtsManager;
@@ -140,6 +141,9 @@ public final class MainActivity extends AppCompatActivity
     // Estado del overlay de diagnóstico, leído de prefs en cada onResume.
     private boolean debugOverlayEnabled = false;
 
+    // Muestreo de FPS, GC y heap para el overlay de rendimiento.
+    private final PerfMonitor perfMonitor = new PerfMonitor();
+
     @Nullable private MapDownloader mapDownloader;
     @Nullable private ObdService boundService;
 
@@ -156,6 +160,10 @@ public final class MainActivity extends AppCompatActivity
 
     @DayNightMode.Mode
     private int currentDayNightMode;
+
+    // Cada cuánto se reevalúa el día/noche automático durante la marcha.
+    private static final long DAY_NIGHT_CHECK_INTERVAL_MS = 60_000L;
+    private long lastDayNightCheckMs = 0L;
 
     private boolean autoCenter = true;
     private boolean serviceBound = false;
@@ -370,6 +378,7 @@ public final class MainActivity extends AppCompatActivity
                 binding.mapView.map(),
                 ContextCompat.getDrawable(this, R.drawable.ic_position_arrow));
         positionLayer.setOverlayArrow(binding.carArrowOverlay);
+        positionLayer.setPerfMonitor(perfMonitor);
         placeCarArrowOverlay();
 
         // Capa de selección de destino por long-press. Se añade encima del resto
@@ -536,6 +545,8 @@ public final class MainActivity extends AppCompatActivity
 
         updateDebugOverlay(latitude, longitude, useLat, useLon, renderLat, renderLon);
 
+        perfMonitor.countGpsFix();
+
         // Actualizar el tracker de navegación y el HUD de maniobra
         if (currentRoute != null) {
             navigationTracker.update(useLat, useLon);
@@ -561,8 +572,27 @@ public final class MainActivity extends AppCompatActivity
         // Actualizar el badge de velocidad con la lectura GPS más reciente.
         binding.speedBadge.setSpeed(speedMs);
 
+        maybeRefreshDayNight();
+
         // Intentar calcular la ruta si hay destino y el grafo está disponible.
         maybeCalculateRoute();
+    }
+
+    /**
+     * Reevalúa el modo día/noche cada minuto
+     */
+    private void maybeRefreshDayNight() {
+        long nowMs = SystemClock.elapsedRealtime();
+        if (nowMs - lastDayNightCheckMs < DAY_NIGHT_CHECK_INTERVAL_MS) {
+            return;
+        }
+        lastDayNightCheckMs = nowMs;
+
+        int mode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
+        if (mode != currentDayNightMode) {
+            currentDayNightMode = mode;
+            applyDayNightToUi();
+        }
     }
     /** Persiste la última posición como mucho una vez cada POSITION_SAVE_INTERVAL_MS. */
     private void saveLastPositionThrottled() {
@@ -606,6 +636,25 @@ public final class MainActivity extends AppCompatActivity
         if (binding != null) {
             binding.debugOverlay.setVisibility(
                     debugOverlayEnabled ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /** Sincroniza el overlay de rendimiento con la preferencia de Ajustes. */
+    private void applyPerfOverlayPref() {
+        boolean enabled = prefsManager.isPerfOverlayEnabled();
+        if (binding != null) {
+            binding.perfOverlay.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        }
+        if (enabled) {
+            perfMonitor.setReportListener(report -> {
+                if (binding != null) {
+                    binding.perfOverlay.setText(report);
+                }
+            });
+            perfMonitor.start();
+        } else {
+            perfMonitor.setReportListener(null);
+            perfMonitor.stop();
         }
     }
 
@@ -698,6 +747,7 @@ public final class MainActivity extends AppCompatActivity
         }
         maybeStartObdService();
         applyDebugOverlayPref();
+        applyPerfOverlayPref();
         // El modo día/noche se cambia desde Ajustes: releerlo al volver al frente.
         currentDayNightMode = prefsManager.isNightMode() ? DayNightMode.NIGHT : DayNightMode.DAY;
         applyDayNightToUi();
@@ -726,6 +776,7 @@ public final class MainActivity extends AppCompatActivity
 
     @Override
     protected void onPause() {
+        perfMonitor.stop();
         if (gpsManager != null) {
             gpsManager.stop();
         }

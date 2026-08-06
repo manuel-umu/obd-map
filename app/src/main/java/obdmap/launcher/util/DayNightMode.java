@@ -14,5 +14,14 @@ public final class DayNightMode {
     @Retention(RetentionPolicy.SOURCE)
     public @interface Mode {}
 
+    /** Preferencia del usuario: automático por sol, o forzado a día/noche. */
+    public static final int PREF_AUTO  = 0;
+    public static final int PREF_DAY   = 1;
+    public static final int PREF_NIGHT = 2;
+
+    @IntDef({PREF_AUTO, PREF_DAY, PREF_NIGHT})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface Pref {}
+
     private DayNightMode() {}
 }

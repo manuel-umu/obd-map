@@ -139,8 +139,7 @@ public final class MapManager {
         // Capa base vectorial: lee los tiles del .map y los renderiza via GLES
         VectorTileLayer baseLayer = map.setBaseMap(tileSource);
 
-        // Tema de conducción (predeterminado= dia)
-        // TODO: Segun hora del dia, al iniciar poner dia o noche
+        // Tema inicial
         applyThemeForMode(DayNightMode.DAY);
 
         // Extrusión 3D de edificios

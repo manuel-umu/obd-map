@@ -13,6 +13,8 @@
     <string name="cancel_route_button">Cancelar ruta</string>
     <string name="settings_debug_overlay_on">Debug GPS: ON</string>
     <string name="settings_debug_overlay_off">Debug GPS: OFF</string>
+    <string name="settings_perf_overlay_on">Debug rendimiento: ON</string>
+    <string name="settings_perf_overlay_off">Debug rendimiento: OFF</string>
 
     <!-- Botón dentro de la pantalla de Ajustes para acceder al Debug OBD. -->
     <string name="settings_open_obd_debug">Debug OBD</string>
@@ -174,6 +176,9 @@
     <string name="hud_fuel_value_format">%1$.1f</string>
 
     <!-- Toggle modo día/noche en la pantalla principal. -->
+    <string name="day_night_auto">Modo: Auto</string>
+    <string name="day_night_day">Modo: Día</string>
+    <string name="day_night_night">Modo: Noche</string>
     <string name="toggle_night_mode">Noche</string>
     <string name="toggle_day_mode">Día</string>
 

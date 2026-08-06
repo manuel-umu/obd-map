@@ -14,6 +14,7 @@ import obdmap.launcher.R;
 import obdmap.launcher.databinding.ActivitySettingsBinding;
 import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.util.ButtonStyler;
+import obdmap.launcher.util.DayNightMode;
 
 /**
  * Pantalla de Ajustes: menú de nivel superior. Solo navega a las distintas
@@ -34,6 +35,8 @@ public final class SettingsActivity extends AppCompatActivity {
         prefsManager = new PrefsManager(this);
         updateDebugOverlayLabel();
         binding.btnToggleDebugOverlay.setOnClickListener(v -> toggleDebugOverlay());
+        updatePerfOverlayLabel();
+        binding.btnTogglePerfOverlay.setOnClickListener(v -> togglePerfOverlay());
         updateDayNightLabel();
         binding.btnDayNight.setOnClickListener(v -> toggleDayNight());
 
@@ -67,8 +70,30 @@ public final class SettingsActivity extends AppCompatActivity {
                 : R.string.settings_debug_overlay_off);
     }
 
+    private void togglePerfOverlay() {
+        prefsManager.setPerfOverlayEnabled(!prefsManager.isPerfOverlayEnabled());
+        updatePerfOverlayLabel();
+    }
+    private void updatePerfOverlayLabel() {
+        binding.btnTogglePerfOverlay.setText(prefsManager.isPerfOverlayEnabled()
+                ? R.string.settings_perf_overlay_on
+                : R.string.settings_perf_overlay_off);
+    }
+
     private void toggleDayNight() {
-        prefsManager.setNightMode(!prefsManager.isNightMode());
+        int next;
+        switch (prefsManager.getDayNightPref()) {
+            case DayNightMode.PREF_AUTO:
+                next = DayNightMode.PREF_DAY;
+                break;
+            case DayNightMode.PREF_DAY:
+                next = DayNightMode.PREF_NIGHT;
+                break;
+            default:
+                next = DayNightMode.PREF_AUTO;
+                break;
+        }
+        prefsManager.setDayNightPref(next);
         updateDayNightLabel();
         applyDayNightToUi();
     }
@@ -83,15 +108,26 @@ public final class SettingsActivity extends AppCompatActivity {
         ButtonStyler.applySecondary(binding.btnObdDebug, isNight);
         ButtonStyler.applySecondary(binding.btnInfo, isNight);
         ButtonStyler.applySecondary(binding.btnToggleDebugOverlay, isNight);
+        ButtonStyler.applySecondary(binding.btnTogglePerfOverlay, isNight);
         ButtonStyler.applySecondary(binding.btnBack, isNight);
         ButtonStyler.applySecondary(binding.btnDayNight, isNight);
     }
 
-    /** Pone en el botón el modo al que se cambiará al pulsarlo. */
+    /** Pone en el botón la preferencia activa. */
     private void updateDayNightLabel() {
-        binding.btnDayNight.setText(prefsManager.isNightMode()
-                ? R.string.toggle_day_mode
-                : R.string.toggle_night_mode);
+        int label;
+        switch (prefsManager.getDayNightPref()) {
+            case DayNightMode.PREF_DAY:
+                label = R.string.day_night_day;
+                break;
+            case DayNightMode.PREF_NIGHT:
+                label = R.string.day_night_night;
+                break;
+            default:
+                label = R.string.day_night_auto;
+                break;
+        }
+        binding.btnDayNight.setText(label);
     }
 
     /** Abre los Ajustes del sistema; si no existe la app, avisa por Toast. */

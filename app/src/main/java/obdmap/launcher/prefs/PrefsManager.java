@@ -8,6 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import obdmap.launcher.obd.FuelCalculator;
+import obdmap.launcher.util.DayNightMode;
+import obdmap.launcher.util.SunPosition;
 
 /**
  * Acceso tipado a SharedPreferences. Toda la persistencia de la app pasa por
@@ -35,13 +37,22 @@ public final class PrefsManager {
     private static final String KEY_MAP_FILE_PATH = "map_file_path";
 
     // Preferencia de modo noche (true = noche, false = día).
-    private static final String KEY_NIGHT_MODE = "night_mode";
+    // Clave nueva a propósito: "night_mode" quedó guardada como boolean en
+    // instalaciones previas y leerla como int lanzaría ClassCastException.
+    private static final String KEY_DAY_NIGHT_PREF = "day_night_pref";
+
+    // Posición de referencia para el cálculo solar sin fix GPS previo.
+    private static final double FALLBACK_LAT = 40.416775;
+    private static final double FALLBACK_LON = -3.703790;
 
     // Calibración del consumo por carga: mg de gasoil por carrera a plena carga.
     private static final String KEY_FULL_LOAD_MG = "full_load_mg_per_stroke";
 
     // Overlay de diagnóstico de snap sobre el mapa (true = visible).
     private static final String KEY_DEBUG_OVERLAY = "debug_overlay";
+
+    // Overlay de diagnóstico de rendimiento sobre el mapa (true = visible).
+    private static final String KEY_PERF_OVERLAY = "perf_overlay";
 
     // Identificador de la región de datos offline activa (ver RegionData).
     private static final String KEY_ACTIVE_REGION = "active_region";
@@ -200,14 +211,49 @@ public final class PrefsManager {
     }
 
     // ---------------------------------------------------------------------
-    // Modo día/noche
+    // Overlay de diagnóstico de rendimiento
     // ---------------------------------------------------------------------
-    public boolean isNightMode() {
-        return prefs.getBoolean(KEY_NIGHT_MODE, false);
+    public boolean isPerfOverlayEnabled() {
+        return prefs.getBoolean(KEY_PERF_OVERLAY, false);
     }
 
-    public void setNightMode(boolean night) {
-        prefs.edit().putBoolean(KEY_NIGHT_MODE, night).apply();
+    public void setPerfOverlayEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PERF_OVERLAY, enabled).apply();
+    }
+
+    // ---------------------------------------------------------------------
+    // Modo día/noche
+    // ---------------------------------------------------------------------
+    /** Preferencia elegida: DayNightMode.PREF_AUTO, PREF_DAY o PREF_NIGHT. */
+    @DayNightMode.Pref
+    public int getDayNightPref() {
+        return prefs.getInt(KEY_DAY_NIGHT_PREF, DayNightMode.PREF_AUTO);
+    }
+
+    public void setDayNightPref(@DayNightMode.Pref int pref) {
+        prefs.edit().putInt(KEY_DAY_NIGHT_PREF, pref).apply();
+    }
+
+    /**
+     * Modo efectivo: en PREF_AUTO lo decide la altura del sol sobre la última
+     * posición conocida.
+     */
+    public boolean isNightMode() {
+        int pref = getDayNightPref();
+        if (pref == DayNightMode.PREF_DAY) {
+            return false;
+        }
+        if (pref == DayNightMode.PREF_NIGHT) {
+            return true;
+        }
+        double lat = getLastLatitude();
+        double lon = getLastLongitude();
+        // Sin fix previo, centro de España: sirve para acertar el ciclo día/noche.
+        if (lat == 0.0 && lon == 0.0) {
+            lat = FALLBACK_LAT;
+            lon = FALLBACK_LON;
+        }
+        return SunPosition.isNight(lat, lon, System.currentTimeMillis());
     }
 
     // ---------------------------------------------------------------------
