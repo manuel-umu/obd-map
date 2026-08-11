@@ -12,6 +12,26 @@ import androidx.annotation.Nullable;
  */
 public final class PerfMonitor implements Choreographer.FrameCallback {
 
+    // Fases cronometradas dentro de un fix de GPS.
+    public static final int PHASE_SNAP = 0;
+    public static final int PHASE_MATCH = 1;
+    public static final int PHASE_PREDICT = 2;
+    public static final int PHASE_NAV = 3;
+    public static final int PHASE_HUD = 4;
+    public static final int PHASE_PREFS = 5;
+    public static final int PHASE_FIX_TOTAL = 6;
+    public static final int PHASE_COUNT = 7;
+
+    private static final String[] PHASE_LABELS = {
+            "snap", "match", "pred", "nav", "hud", "prefs", "fix"
+    };
+
+    // Umbral por debajo del cual una fase no se imprime.
+    private static final long PHASE_REPORT_MS = 20L;
+
+    // Hueco entre frames a partir del cual se considera bloqueo del hilo principal.
+    private static final long STALL_THRESHOLD_MS = 200L;
+
     // Duración de la ventana de muestreo.
     private static final long WINDOW_MS = 1000L;
     private static final String STAT_GC_COUNT = "art.gc.gc-count";
@@ -42,7 +62,15 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
     private long lastFrameNanos = 0L;
 
     private int gpsFixCount = 0;
+    private int gpsFixDoneCount = 0;
     private int mapEventCount = 0;
+
+    // Peor duración de cada fase en la ventana en curso, en ms.
+    private final long[] worstPhaseMs = new long[PHASE_COUNT];
+
+    // Último bloqueo detectado; sobrevive a los cambios de ventana.
+    private long lastStallMs = 0L;
+    private long lastStallAtMs = 0L;
 
     // Línea base de la ventana: contadores de ART y heap Java usado en bytes.
     private long baseGcCount = STAT_UNAVAILABLE;
@@ -77,12 +105,37 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         frameCount = 0;
         worstFrameNanos = 0L;
         gpsFixCount = 0;
+        gpsFixDoneCount = 0;
         mapEventCount = 0;
+        lastStallMs = 0L;
+        lastStallAtMs = 0L;
     }
 
     public void countGpsFix() {
         if (running) {
             gpsFixCount++;
+        }
+    }
+
+    public void countGpsFixDone() {
+        if (running) {
+            gpsFixDoneCount++;
+        }
+    }
+
+    /** Marca de inicio de fase, o 0 si el monitor está parado. */
+    public long phaseStart() {
+        return running ? SystemClock.elapsedRealtime() : 0L;
+    }
+
+    /** Guarda la duración de la fase si es la peor de la ventana. */
+    public void phaseEnd(int phase, long startMs) {
+        if (!running) {
+            return;
+        }
+        long elapsed = SystemClock.elapsedRealtime() - startMs;
+        if (elapsed > worstPhaseMs[phase]) {
+            worstPhaseMs[phase] = elapsed;
         }
     }
 
@@ -101,6 +154,11 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
             long deltaNanos = frameTimeNanos - lastFrameNanos;
             if (deltaNanos > worstFrameNanos) {
                 worstFrameNanos = deltaNanos;
+            }
+            long deltaMs = deltaNanos / 1000000L;
+            if (deltaMs >= STALL_THRESHOLD_MS) {
+                lastStallMs = deltaMs;
+                lastStallAtMs = SystemClock.elapsedRealtime();
             }
         }
         lastFrameNanos = frameTimeNanos;
@@ -160,11 +218,36 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
 
         report.append("nativo ").append(Debug.getNativeHeapAllocatedSize() >> 20).append("MB\n");
 
+        appendSlowPhases();
+
+        if (lastStallAtMs != 0L) {
+            report.append("bloqueo ").append(lastStallMs).append("ms hace ")
+                    .append((nowMs - lastStallAtMs) / 1000L).append("s\n");
+        }
+
         report.append("gps ").append(perSecond(gpsFixCount, elapsedMs))
-                .append("/s  mapa ").append(perSecond(mapEventCount, elapsedMs)).append("/s");
+                .append('/').append(perSecond(gpsFixDoneCount, elapsedMs))
+                .append("  mapa ").append(perSecond(mapEventCount, elapsedMs)).append("/s");
 
         beginWindow(nowMs, heapUsed, gcCount, gcTime, blockingCount, blockingTime);
         return report.toString();
+    }
+
+    /** Línea con las fases que pasaron del umbral en la ventana. */
+    private void appendSlowPhases() {
+        report.append("lento:");
+        boolean any = false;
+        for (int i = 0; i < PHASE_COUNT; i++) {
+            if (worstPhaseMs[i] > PHASE_REPORT_MS) {
+                report.append(' ').append(PHASE_LABELS[i]).append(' ')
+                        .append(worstPhaseMs[i]).append("ms ");
+                any = true;
+            }
+        }
+        if (!any) {
+            report.append(" -");
+        }
+        report.append('\n');
     }
 
     /** Línea "delta de la ventana + acumulado" de un par de contadores de GC. */
@@ -187,7 +270,11 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         frameCount = 0;
         worstFrameNanos = 0L;
         gpsFixCount = 0;
+        gpsFixDoneCount = 0;
         mapEventCount = 0;
+        for (int i = 0; i < PHASE_COUNT; i++) {
+            worstPhaseMs[i] = 0L;
+        }
         baseHeapUsed = heapUsed;
         baseGcCount = gcCount;
         baseGcTime = gcTime;

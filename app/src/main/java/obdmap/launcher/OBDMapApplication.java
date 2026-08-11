@@ -1,6 +1,7 @@
 package obdmap.launcher;
 
 import android.app.Application;
+import android.os.StrictMode;
 
 /**
  * Application de la app.
@@ -16,5 +17,11 @@ public final class OBDMapApplication extends Application {
     public void onCreate() {
         super.onCreate();
         // Sin inicialización de VTM aquí: MapView se encarga al inflarse.
+
+        if (BuildConfig.DEBUG) {
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                    .detectDiskReads().detectDiskWrites().detectCustomSlowCalls()
+                    .penaltyLog().build());
+        }
     }
 }

@@ -423,6 +423,8 @@ public final class MainActivity extends AppCompatActivity
     @Override
     public void onPositionUpdate(double latitude, double longitude,
                                  float bearingDegrees, boolean hasBearing, float speedMs) {
+        perfMonitor.countGpsFix();
+        long tFix = perfMonitor.phaseStart();
 
         // Cascada de snap-to-road:
         // 1) Si hay ruta activa, proyectar sobre su polilínea.
@@ -436,20 +438,27 @@ public final class MainActivity extends AppCompatActivity
         // navigationTracker.update() se llama al final de este método. Es lo correcto.
         int segHint = navigationTracker.getCurrentSegmentIndex();
 
-        if (currentRoute != null
+        long tSnap = perfMonitor.phaseStart();
+        boolean routeSnapped = currentRoute != null
                 && RoadSnapper.snapToRoute(currentRoute, latitude, longitude,
-                                           RoadSnapper.MAX_SNAP_METERS, segHint, snapOut)) {
+                                           RoadSnapper.MAX_SNAP_METERS, segHint, snapOut);
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_SNAP, tSnap);
+
+        if (routeSnapped) {
             useLat = snapOut[0];
             useLon = snapOut[1];
         } else {
             RoutingManager rm = RoutingManager.getInstance();
-            if (rm.getState() == RoutingManager.STATE_READY
-                    && rm.getHopper() != null
-                    && roadMatcher.match(rm.getHopper(), latitude, longitude,
-                                         bearingDegrees, hasBearing,
-                                         RoadSnapper.MAX_SNAP_METERS, snapOut)) {
-                useLat = snapOut[0];
-                useLon = snapOut[1];
+            if (rm.getState() == RoutingManager.STATE_READY && rm.getHopper() != null) {
+                long tMatch = perfMonitor.phaseStart();
+                boolean matched = roadMatcher.match(rm.getHopper(), latitude, longitude,
+                                                    bearingDegrees, hasBearing,
+                                                    RoadSnapper.MAX_SNAP_METERS, snapOut);
+                perfMonitor.phaseEnd(PerfMonitor.PHASE_MATCH, tMatch);
+                if (matched) {
+                    useLat = snapOut[0];
+                    useLon = snapOut[1];
+                }
             }
         }
 
@@ -481,6 +490,7 @@ public final class MainActivity extends AppCompatActivity
 
         double renderLat;
         double renderLon;
+        long tPredict = perfMonitor.phaseStart();
         boolean hasPrediction = PositionPredictor.predict(useLat, useLon,
                 bearingDegrees, hasBearing, speedMs,
                 effectiveLookaheadMs,
@@ -530,6 +540,7 @@ public final class MainActivity extends AppCompatActivity
             renderLat = useLat;
             renderLon = useLon;
         }
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_PREDICT, tPredict);
 
         // Marcador y viewport reciben el MISMO objetivo de render.
         // En autoCenter el marcador lee el viewport (POSITION_EVENT), así que
@@ -545,9 +556,8 @@ public final class MainActivity extends AppCompatActivity
 
         updateDebugOverlay(latitude, longitude, useLat, useLon, renderLat, renderLon);
 
-        perfMonitor.countGpsFix();
-
         // Actualizar el tracker de navegación y el HUD de maniobra
+        long tNav = perfMonitor.phaseStart();
         if (currentRoute != null) {
             navigationTracker.update(useLat, useLon);
             updateNavHud();
@@ -561,21 +571,31 @@ public final class MainActivity extends AppCompatActivity
         } else {
             hideNavHud();
         }
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_NAV, tNav);
 
-        binding.statusText.setVisibility(View.GONE);
         // Se guarda la posición GPS CRUDA (no la predicha) para que al relanzar
         // la app el mapa arranque desde donde el coche estaba realmente.
         lastRawLat = latitude;
         lastRawLon = longitude;
+        long tPrefs = perfMonitor.phaseStart();
         saveLastPositionThrottled();
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_PREFS, tPrefs);
 
+        long tHud = perfMonitor.phaseStart();
+        binding.statusText.setVisibility(View.GONE);
         // Actualizar el badge de velocidad con la lectura GPS más reciente.
         binding.speedBadge.setSpeed(speedMs);
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_HUD, tHud);
 
         maybeRefreshDayNight();
 
         // Intentar calcular la ruta si hay destino y el grafo está disponible.
+        long tRoute = perfMonitor.phaseStart();
         maybeCalculateRoute();
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_PREFS, tRoute);
+
+        perfMonitor.phaseEnd(PerfMonitor.PHASE_FIX_TOTAL, tFix);
+        perfMonitor.countGpsFixDone();
     }
 
     /**
