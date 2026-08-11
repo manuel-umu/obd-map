@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Flecha de posición del coche, punta hacia arriba (norte = 0°).
-    Tres capas: contorno oscuro, halo blanco y cuerpo azul.
+    Capas: sombra proyectada, borde oscuro grueso y cuerpo azul.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="50dp"
-    android:height="50dp"
+    android:width="56dp"
+    android:height="56dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
 
-    <!-- Contorno oscuro exterior -->
+    <!-- Sombra exterior difusa -->
     <path
-        android:fillColor="#FF0D2137"
-        android:pathData="M24,7 L43,39 L24,31.5 L5,39 Z" />
+        android:fillColor="#1C000000"
+        android:pathData="M24,3 L46.5,42 L24,33.5 L1.5,42 Z" />
 
-    <!-- Halo blanco intermedio -->
+    <!-- Borde oscuro -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M24,10.5 L39.5,37.5 L24,30 L8.5,37.5 Z" />
+        android:fillColor="#FF0A1A2B"
+        android:pathData="M24,5 L44.5,40 L24,32 L3.5,40 Z" />
 
-    <!-- Cuerpo azul de la flecha -->
+    <!-- Cuerpo azul brillante -->
     <path
-        android:fillColor="#FF1976D2"
-        android:pathData="M24,14 L36,36 L24,28.5 L12,36 Z" />
+        android:fillColor="#FF2D8CFF"
+        android:pathData="M24,12.5 L36.5,33.5 L24,28 L11.5,33.5 Z" />
 
 </vector>

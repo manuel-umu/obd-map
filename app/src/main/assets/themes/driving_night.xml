@@ -30,9 +30,8 @@
     - platform cores
     - barrier=retaining_wall
 
-  COLOR: map-background del original tronrender (#050508, casi negro). No se modifica.
 -->
-<rendertheme xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" map-background="#050508"
+<rendertheme xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" map-background="#131820"
     version="1" xmlns="http://opensciencemap.org/rendertheme"
     xsi:schemaLocation="http://opensciencemap.org/rendertheme https://raw.githubusercontent.com/mapsforge/vtm/master/resources/rendertheme.xsd">
 
@@ -64,39 +63,39 @@
     <!--###### AREA styles ######-->
 
     <!--residential-->
-    <style-area fade="10" fill="#ff0000" id="residential" />
+    <style-area fade="10" fill="#1a1f27" id="residential" />
     <!--railway-->
-    <style-area fade="10" fill="#f2eeef" id="railway|industrial" />
-    <style-area fade="11" fill="#fff8bf" id="farmland" />
+    <style-area fade="10" fill="#22262e" id="railway|industrial" />
+    <style-area fade="11" fill="#1d2129" id="farmland" />
 
     <!-- estilos de zonas verdes: mantenidos por compatibilidad con el parser -->
-    <style-area fade="10" fill="#33390c" id="greens" />
-    <style-area fade="12" fill="#627100" id="greens2" />
-    <style-area fade="11" fill="#627100" id="park" />
-    <style-area blend="11" blend-fill="#1e2205" fade="7" fill="#151806" id="forest|wood" />
-    <style-area fade="12" fill="#efeae0" id="allotments" />
-    <style-area fade="10" fill="#ddddcc" id="quarry" />
-    <style-area fade="10" fill="#eeedea" id="military" />
+    <style-area fade="10" fill="#16201a" id="greens" />
+    <style-area fade="12" fill="#18231c" id="greens2" />
+    <style-area fade="11" fill="#18231c" id="park" />
+    <style-area blend="11" blend-fill="#16241a" fade="7" fill="#131d17" id="forest|wood" />
+    <style-area fade="12" fill="#1c2028" id="allotments" />
+    <style-area fade="10" fill="#1e2229" id="quarry" />
+    <style-area fade="10" fill="#1b1f26" id="military" />
 
     <!--building-->
-    <style-area fade="15" fill="#ee606060" id="building" />
+    <style-area fade="15" fill="#ee2c313a" id="building" />
 
     <!--water-->
-    <style-area fill="#001223" id="water" />
+    <style-area fill="#0b1a2b" id="water" />
 
 
     <!--###### LINE styles ######-->
 
-    <style-line blur="1.0" fade="13" id="residential" stroke="#ffffff" width="1.0" />
+    <style-line blur="1.0" fade="13" id="residential" stroke="#d9dee5" width="1.0" />
     <style-line cap="butt" id="residential:bridge" use="residential" />
 
     <style-line id="pedestrian" use="residential" width="-0.4" />
     <style-line cap="butt" id="pedestrian:bridge" use="pedestrian" />
 
-    <style-line blur="0.9" id="highway:z11" stroke="#ffffff" width="1.8" />
-    <style-line blur="0.9" cap="butt" id="trunk_link" stroke="#ffffff" width="1.3" />
-    <style-line blur="0.9" id="trunk" stroke="#ffffff" width="1.6" />
-    <style-line blur="0.9" id="primary:z11" stroke="#ffffff" width="1.5" />
+    <style-line blur="0.9" id="highway:z11" stroke="#d9dee5" width="1.8" />
+    <style-line blur="0.9" cap="butt" id="trunk_link" stroke="#d9dee5" width="1.3" />
+    <style-line blur="0.9" id="trunk" stroke="#d9dee5" width="1.6" />
+    <style-line blur="0.9" id="primary:z11" stroke="#d9dee5" width="1.5" />
     <style-line id="secondary:z11" use="primary:z11" width="-0.1" />
     <style-line fade="11" id="tertiary" use="residential" width="0.2" />
     <style-line id="construction" stroke="#e0e0e0" width="1.2" />
@@ -110,13 +109,13 @@
     <style-line cap="butt" id="steps" stroke="#f1f0f4" width="0.25" />
 
     <style-line cap="butt" fix="true" id="fence" stroke="#444444" width="1.2" />
-    <style-line blur="0.7" cap="butt" id="aeroway:runway" stroke="#008888" width="1.8" />
+    <style-line blur="0.7" cap="butt" id="aeroway:runway" stroke="#1d4a4a" width="1.8" />
     <!--building-->
-    <style-line cap="butt" fix="true" id="building" stroke="#ee808080" width="1.5" />
+    <style-line cap="butt" fix="true" id="building" stroke="#ee3c424c" width="1.5" />
 
     <!--water-->
-    <style-line cap="butt" id="water:outline" stroke="#a4bbcc" width="1.0" />
-    <style-line cap="butt" id="water" stroke="#cca4bbcc" width="0.6" />
+    <style-line cap="butt" id="water:outline" stroke="#40596f" width="1.0" />
+    <style-line cap="butt" id="water" stroke="#cc40596f" width="0.6" />
 
     <!--###### SYMBOL styles ######-->
     <style-symbol id="oneway" repeat="true" src="assets:symbols/oneway.svg" />
@@ -326,15 +325,15 @@
                     </m>
 
                     <m v="primary" zoom-min="5">
-                        <line cap="butt" fade="5" fix="true" stroke="#ddffffff" width="1.8" />
+                        <line cap="butt" fade="5" fix="true" stroke="#ddd9dee5" width="1.8" />
                     </m>
 
                     <m v="trunk" zoom-min="5">
-                        <line cap="butt" fade="5" fix="true" stroke="#ddffffff" width="1.8" />
+                        <line cap="butt" fade="5" fix="true" stroke="#ddd9dee5" width="1.8" />
                     </m>
 
                     <m v="motorway">
-                        <line cap="butt" fade="5" fix="true" stroke="#ddffffff" width="1.7" />
+                        <line cap="butt" fade="5" fix="true" stroke="#ddd9dee5" width="1.7" />
                     </m>
                 </m>
             </m>
