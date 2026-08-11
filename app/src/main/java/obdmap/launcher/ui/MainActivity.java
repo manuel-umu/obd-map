@@ -48,6 +48,7 @@ import obdmap.launcher.prefs.PrefsManager;
 import obdmap.launcher.prefs.SavedPlace;
 import obdmap.launcher.prefs.SavedPlacesStore;
 import obdmap.launcher.routing.NavigationTracker;
+import obdmap.launcher.routing.CurrentRoad;
 import obdmap.launcher.routing.RoadMatcher;
 import obdmap.launcher.routing.RoadSnapper;
 import obdmap.launcher.routing.Route;
@@ -131,6 +132,10 @@ public final class MainActivity extends AppCompatActivity
 
     // Map-matcher del punto predicho, independiente para que pueda avanzar de arista
     private final RoadMatcher leadMatcher = new RoadMatcher();
+
+    // Vía actual y última referencia pintada, para no repintar cada fix.
+    private final CurrentRoad currentRoad = new CurrentRoad();
+    @Nullable private String lastRoadRef;
 
     // Buffer para el resultado de la predicción de posición
     private final double[] predictOut = new double[2];
@@ -466,6 +471,8 @@ public final class MainActivity extends AppCompatActivity
         lastLat = useLat;
         lastLon = useLon;
 
+        updateRoadNameLabel();
+
         // Predicción de posición (lead/lookahead)
         // Pipeline: snap con pos original -> predict -> snap otra vez con prediccion.
 
@@ -650,6 +657,28 @@ public final class MainActivity extends AppCompatActivity
         binding.debugOverlay.setText(sb.toString());
     }
 
+    /** Muestra la referencia de la vía actual si es autovía, nacional o primaria. */
+    private void updateRoadNameLabel() {
+        if (binding == null) {
+            return;
+        }
+        currentRoad.setEdge(roadMatcher.getCurrentRoadName(), roadMatcher.isCurrentRoadMajor());
+        String ref = currentRoad.resolve(SystemClock.elapsedRealtime());
+
+        if (ref == null) {
+            if (lastRoadRef != null) {
+                lastRoadRef = null;
+                binding.roadNameLabel.setVisibility(View.GONE);
+            }
+            return;
+        }
+        if (!ref.equals(lastRoadRef)) {
+            lastRoadRef = ref;
+            binding.roadNameLabel.setText(ref);
+            binding.roadNameLabel.setVisibility(View.VISIBLE);
+        }
+    }
+
     /** Sincroniza el overlay de diagnóstico con la preferencia de Ajustes. */
     private void applyDebugOverlayPref() {
         debugOverlayEnabled = prefsManager.isDebugOverlayEnabled();
@@ -692,6 +721,10 @@ public final class MainActivity extends AppCompatActivity
         binding.statusText.setText(R.string.status_gps_lost);
         // Sin proveedor GPS activo: el badge muestra "--".
         binding.speedBadge.setNoData();
+
+        currentRoad.clear();
+        lastRoadRef = null;
+        binding.roadNameLabel.setVisibility(View.GONE);
     }
 
     @Override
@@ -1228,6 +1261,10 @@ public final class MainActivity extends AppCompatActivity
                 isNight ? 0xCC101418 : 0xCCF5F5F5);
         binding.favoritesPanel.setBackgroundColor(
                 isNight ? 0xCC101418 : 0xCCF5F5F5);
+        binding.roadNameLabel.setBackgroundColor(
+                isNight ? 0xCC101418 : 0xCCF5F5F5);
+        binding.roadNameLabel.setTextColor(
+                isNight ? 0xFFFFFFFF : 0xFF101418);
         // Tema del mapa VTM.
         if (mapManager != null) {
             mapManager.applyDayNightTheme(currentDayNightMode);

@@ -7,6 +7,8 @@ import androidx.annotation.Nullable;
 
 import com.graphhopper.GraphHopper;
 import com.graphhopper.routing.ev.BooleanEncodedValue;
+import com.graphhopper.routing.ev.EnumEncodedValue;
+import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.Graph;
@@ -71,6 +73,26 @@ public final class RoadMatcher {
     /** Fixes seguidos en los que la arista pegada no admite el rumbo actual */
     private int wrongDirFixes = 0;
 
+    /** Clase de vía de la arista actual; null si el grafo no la trae codificada. */
+    @Nullable
+    private EnumEncodedValue<RoadClass> roadClassEnc;
+
+    /** Nombre y rango de la arista sobre la que se está circulando. */
+    @Nullable
+    private String currentRoadName;
+    private boolean currentRoadMajor;
+
+    @Nullable
+    public String getCurrentRoadName() {
+        return currentRoadName;
+    }
+
+    public boolean isCurrentRoadMajor() {
+        return currentRoadMajor;
+    }
+
+
+
     /**
      * Pega (lat, lon) a la red manteniendo la arista del fix anterior salvo mejora clara.
      * @param out array de tamaño >= 2; out[0]=lat, out[1]=lon del punto pegado
@@ -87,6 +109,7 @@ public final class RoadMatcher {
             index = hopper.getLocationIndex();
             explorer = (graph != null) ? graph.createEdgeExplorer() : null;
             headingFilter.setAccessEnc(fetchAccessEnc(hopper));
+            roadClassEnc = fetchRoadClassEnc(hopper);
             forgetSticky();
         }
         if (index == null || graph == null) {
@@ -161,6 +184,7 @@ public final class RoadMatcher {
                 out[0] = stickyLat;
                 out[1] = stickyLon;
                 lastMatchMs = now;
+                recordRoad(fetchSticky());
                 return true;
             }
         }
@@ -176,11 +200,41 @@ public final class RoadMatcher {
         stickyAdjNode = candEdge.getAdjNode();
         lastMatchMs = now;
         clearPending();
+        recordRoad(candEdge);
 
         GHPoint3D snapped = qr.getSnappedPoint();
         out[0] = snapped.lat;
         out[1] = snapped.lon;
         return true;
+    }
+
+    private void recordRoad(@Nullable EdgeIteratorState edge) {
+        if (edge == null) {
+            currentRoadName = null;
+            currentRoadMajor = false;
+            return;
+        }
+        currentRoadName = edge.getName();
+        currentRoadMajor = isMajor(edge);
+    }
+
+    private boolean isMajor(@NonNull EdgeIteratorState edge) {
+        if (roadClassEnc == null) {
+            return false;
+        }
+        RoadClass rc = edge.get(roadClassEnc);
+        return rc == RoadClass.MOTORWAY || rc == RoadClass.TRUNK || rc == RoadClass.PRIMARY;
+    }
+
+    @Nullable
+    private static EnumEncodedValue<RoadClass> fetchRoadClassEnc(@NonNull GraphHopper hopper) {
+        try {
+            return hopper.getEncodingManager()
+                    .getEnumEncodedValue(RoadClass.KEY, RoadClass.class);
+        } catch (RuntimeException e) {
+            // Grafo sin road_class codificado: el panel de vía queda desactivado.
+            return null;
+        }
     }
 
     /**
@@ -313,6 +367,8 @@ public final class RoadMatcher {
         stickyBaseNode = -1;
         stickyAdjNode = -1;
         wrongDirFixes = 0;
+        currentRoadName = null;
+        currentRoadMajor = false;
         clearPending();
     }
 
