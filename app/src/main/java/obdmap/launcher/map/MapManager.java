@@ -29,20 +29,18 @@ import java.util.List;
  */
 public final class MapManager {
 
-    // Auto-zoom por velocidad. Subidos +1 respecto a la vista cenital porque el
-    // tilt aleja la imagen: hay que acercar para compensar la perspectiva.
-    private static final double CITY_ZOOM         = 18.0;
-    private static final double HIGHWAY_ZOOM      = 16.0;
-    private static final double CITY_SPEED_KMH    = 50.0;
-    private static final double HIGHWAY_SPEED_KMH = 100.0;
+    // Auto-zoom por velocidad
+    private static final double CITY_ZOOM = 19.0;
+    private static final double HIGHWAY_ZOOM = 16.5;
+    private static final double CITY_SPEED_KMH = 50.0;
+    private static final double HIGHWAY_SPEED_KMH = 110.0;
 
     // Suavizado de la velocidad para el zoom (media móvil exponencial).
     // 0.3 = responde en ~3-4 s; amortigua el ruido del GPS que hacía tiritar el zoom.
     private static final float SPEED_SMOOTHING = 0.3f;
 
-    // Inclinación de cámara (perspectiva 3D tipo Waze): 0 = cenital (en picado),
-    // ~50 = reclinada para ver la carretera al frente. Máximo de VTM ~65.
-    private static final float DRIVE_TILT = 50.0f;
+    // Inclinación de camara
+    private static final float DRIVE_TILT = 60.0f;
 
     // Posición vertical del coche en pantalla. 0 = centro; 0.5 = tercio inferior
     // (preset de navegación de VTM, deja más carretera visible por delante).

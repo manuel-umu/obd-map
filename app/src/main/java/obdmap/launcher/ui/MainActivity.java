@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -1265,6 +1266,18 @@ public final class MainActivity extends AppCompatActivity
                 isNight ? 0xCC101418 : 0xCCF5F5F5);
         binding.roadNameLabel.setTextColor(
                 isNight ? 0xFFFFFFFF : 0xFF101418);
+
+        // Flecha con borde blanco de noche
+        int arrowRes = isNight
+                ? R.drawable.ic_position_arrow_night
+                : R.drawable.ic_position_arrow;
+        binding.carArrowOverlay.setImageResource(arrowRes);
+        if (positionLayer != null) {
+            Drawable arrow = ContextCompat.getDrawable(this, arrowRes);
+            if (arrow != null) {
+                positionLayer.setArrowDrawable(arrow);
+            }
+        }
         // Tema del mapa VTM.
         if (mapManager != null) {
             mapManager.applyDayNightTheme(currentDayNightMode);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Flecha de posición del coche, punta hacia arriba (norte = 0°).
-    Dos triángulos redondeados: borde oscuro fino y cuerpo azul.
+    Flecha de posición en modo noche: borde blanco sobre el mapa azul oscuro.
+    Misma geometría que ic_position_arrow.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="56dp"
@@ -10,8 +10,8 @@
     android:viewportHeight="48">
 
     <path
-        android:fillColor="#FF0A1A2B"
-        android:strokeColor="#FF0A1A2B"
+        android:fillColor="#FFFFFFFF"
+        android:strokeColor="#FFFFFFFF"
         android:strokeWidth="7"
         android:strokeLineJoin="round"
         android:pathData="M24,11 L40,38 L8,38 Z" />

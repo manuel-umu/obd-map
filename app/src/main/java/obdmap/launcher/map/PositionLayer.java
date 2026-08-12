@@ -45,7 +45,7 @@ public final class PositionLayer implements Map.UpdateListener {
     private final MarkerItem carMarker;
 
     /** Símbolo del marcador; se le ajusta la rotación frame a frame. */
-    private final MarkerSymbol carSymbol;
+    private MarkerSymbol carSymbol;
 
     /** Último rumbo GPS fiable, en grados [0, 360). */
     private float lastBearingDeg = 0f;
@@ -208,6 +208,18 @@ public final class PositionLayer implements Map.UpdateListener {
      *
      * @param arrow ImageView del layout, o null para volver siempre al marcador VTM
      */
+    /** Sustituye la flecha del marcador (día/noche) conservando la rotación. */
+    public void setArrowDrawable(@NonNull Drawable arrowDrawable) {
+        float rotation = carSymbol.getRotation();
+        MarkerSymbol symbol = new MarkerSymbol(drawableToBitmap(arrowDrawable),
+                MarkerSymbol.HotspotPlace.CENTER, true);
+        symbol.setRotation(rotation);
+        carSymbol = symbol;
+        carMarker.setMarker(symbol);
+        markerLayer.populate();
+        vtmMap.updateMap(true);
+    }
+
     public void setOverlayArrow(@Nullable View arrow) {
         overlayArrow = arrow;
     }
