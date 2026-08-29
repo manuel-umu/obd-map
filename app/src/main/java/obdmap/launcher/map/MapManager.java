@@ -11,7 +11,6 @@ import org.oscim.core.BoundingBox;
 import org.oscim.core.GeoPoint;
 import org.oscim.core.MapPosition;
 import org.oscim.layers.PathLayer;
-import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.theme.IRenderTheme;
 import obdmap.launcher.util.DayNightMode;
@@ -29,8 +28,9 @@ import java.util.List;
 public final class MapManager {
 
     // Auto-zoom por velocidad
-    private static final double CITY_ZOOM = 19.0;
+    private static final double CITY_ZOOM = 18.0;
     private static final double HIGHWAY_ZOOM = 16.5;
+    private static final double ZOOM_STEP = 0.25;
     private static final double CITY_SPEED_KMH = 50.0;
     private static final double HIGHWAY_SPEED_KMH = 110.0;
 
@@ -38,8 +38,9 @@ public final class MapManager {
     // 0.3 = responde en ~3-4 s; amortigua el ruido del GPS que hacía tiritar el zoom.
     private static final float SPEED_SMOOTHING = 0.3f;
 
-    // Inclinación de camara
-    private static final float DRIVE_TILT = 60.0f;
+    // Inclinación de camara. Cuanto más tumbada, más lejos se ve y más teselas
+    // entran en el frustum: es el mayor coste de render junto con el zoom.
+    private static final float DRIVE_TILT = 45.0f;
 
     // Posición vertical del coche en pantalla. 0 = centro; 0.5 = tercio inferior
     // (preset de navegación de VTM, deja más carretera visible por delante).
@@ -145,7 +146,7 @@ public final class MapManager {
         applyThemeForMode(DayNightMode.DAY);
 
         // Etiquetas de calles y puntos de interes
-        map.layers().add(new LabelLayer(map, baseLayer));
+        map.layers().add(new ThrottledLabelLayer(map, baseLayer));
 
         // Capa de ruta, vacía de momento. Se añade ANTES que el marcador del coche
         // (que MainActivity crea después) para que el coche se dibuje por encima.
@@ -334,7 +335,8 @@ public final class MapManager {
             return HIGHWAY_ZOOM;
         }
         double t = (kmh - CITY_SPEED_KMH) / (HIGHWAY_SPEED_KMH - CITY_SPEED_KMH);
-        return CITY_ZOOM + t * (HIGHWAY_ZOOM - CITY_ZOOM);
+        double zoom = CITY_ZOOM + t * (HIGHWAY_ZOOM - CITY_ZOOM);
+        return Math.round(zoom / ZOOM_STEP) * ZOOM_STEP;
     }
 
     /**

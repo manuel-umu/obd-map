@@ -1,9 +1,7 @@
 package obdmap.launcher.util;
 
 import android.os.Debug;
-import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Printer;
 import android.view.Choreographer;
 
 import androidx.annotation.Nullable;
@@ -65,11 +63,10 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
 
     private int gpsFixCount = 0;
     private int gpsFixDoneCount = 0;
-    private long msgStartMs = 0L;
-    private String msgCurrent = "";
-    private long worstMsgMs = 0L;
-    private String worstMsgLabel = "";
     private int mapEventCount = 0;
+
+    // false = solo la línea de fps; true = resto
+    private boolean fullReport = false;
 
     // Peor duración de cada fase en la ventana en curso, en ms.
     private final long[] worstPhaseMs = new long[PHASE_COUNT];
@@ -93,7 +90,6 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         running = true;
         lastFrameNanos = 0L;
         choreographer = Choreographer.getInstance();
-        Looper.getMainLooper().setMessageLogging(messageLogger);
         beginWindow(SystemClock.elapsedRealtime(), usedHeap(),
                 readStat(STAT_GC_COUNT), readStat(STAT_GC_TIME),
                 readStat(STAT_BLOCKING_GC_COUNT), readStat(STAT_BLOCKING_GC_TIME));
@@ -106,7 +102,6 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
             return;
         }
         running = false;
-        Looper.getMainLooper().setMessageLogging(null);
         if (choreographer != null) {
             choreographer.removeFrameCallback(this);
         }
@@ -131,25 +126,10 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         }
     }
 
-    private final Printer messageLogger = new Printer() {
-        @Override
-        public void println(String line) {
-            if (line.isEmpty()) {
-                return;
-            }
-            if (line.charAt(0) == '>') {
-                msgStartMs = SystemClock.elapsedRealtime();
-                msgCurrent = line;
-            } else if (msgStartMs != 0L) {
-                long elapsed = SystemClock.elapsedRealtime() - msgStartMs;
-                if (elapsed > worstMsgMs) {
-                    worstMsgMs = elapsed;
-                    worstMsgLabel = msgCurrent;
-                }
-                msgStartMs = 0L;
-            }
-        }
-    };
+    /** Detalle del informe: solo fps, o todas las métricas. */
+    public void setFullReport(boolean full) {
+        fullReport = full;
+    }
 
     /** Marca de inicio de fase, o 0 si el monitor está parado. */
     public long phaseStart() {
@@ -222,16 +202,22 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
             return null;
         }
 
+        report.setLength(0);
+        report.append("fps ").append(perSecond(frameCount, elapsedMs))
+                .append("  peor ").append(millisOf(worstFrameNanos)).append("ms");
+
+        if (!fullReport) {
+            beginWindow(nowMs, baseHeapUsed, baseGcCount, baseGcTime,
+                    baseBlockingCount, baseBlockingTime);
+            return report.toString();
+        }
+        report.append('\n');
+
         long gcCount = readStat(STAT_GC_COUNT);
         long gcTime = readStat(STAT_GC_TIME);
         long blockingCount = readStat(STAT_BLOCKING_GC_COUNT);
         long blockingTime = readStat(STAT_BLOCKING_GC_TIME);
         long heapUsed = usedHeap();
-
-        report.setLength(0);
-
-        report.append("fps ").append(perSecond(frameCount, elapsedMs))
-                .append("  peor ").append(millisOf(worstFrameNanos)).append("ms\n");
 
         appendGcLine("gc", gcCount, gcTime, baseGcCount, baseGcTime);
         appendGcLine("bloq", blockingCount, blockingTime, baseBlockingCount, baseBlockingTime);
@@ -257,8 +243,6 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
                 .append('/').append(perSecond(gpsFixDoneCount, elapsedMs))
                 .append("  mapa ").append(perSecond(mapEventCount, elapsedMs)).append("/s");
 
-        report.append("\nmsg ").append(worstMsgMs).append("ms ")
-                .append(worstMsgMs == 0L ? "-" : shortenMessage(worstMsgLabel));
 
         beginWindow(nowMs, heapUsed, gcCount, gcTime, blockingCount, blockingTime);
         return report.toString();
@@ -300,7 +284,6 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         windowStartMs = nowMs;
         frameCount = 0;
         worstFrameNanos = 0L;
-        worstMsgMs = 0L;
         gpsFixCount = 0;
         gpsFixDoneCount = 0;
         mapEventCount = 0;
@@ -312,12 +295,6 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
         baseGcTime = gcTime;
         baseBlockingCount = blockingCount;
         baseBlockingTime = blockingTime;
-    }
-
-    private static String shortenMessage(String line) {
-        int from = line.indexOf("to ");
-        String tail = (from >= 0) ? line.substring(from + 3) : line;
-        return (tail.length() > 46) ? tail.substring(tail.length() - 46) : tail;
     }
 
     private static long usedHeap() {

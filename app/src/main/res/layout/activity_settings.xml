@@ -100,17 +100,37 @@
                 android:textColor="@color/accent"
                 android:textSize="20sp" />
 
-            <!-- Fila 4: toggle del overlay de diagnóstico de rendimiento. -->
-            <Button
-                android:id="@+id/btnTogglePerfOverlay"
+            <!-- Fila 4: overlay de rendimiento (solo fps) y su informe completo. -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:background="@drawable/btn_hud_night"
-                android:minHeight="110dp"
-                android:text="@string/settings_perf_overlay_off"
-                android:textColor="@color/accent"
-                android:textSize="20sp" />
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnTogglePerfOverlay"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_hud_night"
+                    android:minHeight="110dp"
+                    android:text="@string/settings_perf_overlay_off"
+                    android:textColor="@color/accent"
+                    android:textSize="20sp" />
+
+                <Button
+                    android:id="@+id/btnTogglePerfFull"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_hud_night"
+                    android:minHeight="110dp"
+                    android:text="@string/settings_perf_full_off"
+                    android:textColor="@color/accent"
+                    android:textSize="20sp" />
+
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>

@@ -696,6 +696,7 @@ public final class MainActivity extends AppCompatActivity
             binding.perfOverlay.setVisibility(enabled ? View.VISIBLE : View.GONE);
         }
         if (enabled) {
+            perfMonitor.setFullReport(prefsManager.isPerfFullEnabled());
             perfMonitor.setReportListener(report -> {
                 if (binding != null) {
                     binding.perfOverlay.setText(report);

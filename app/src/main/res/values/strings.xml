@@ -15,6 +15,8 @@
     <string name="settings_debug_overlay_off">Debug GPS: OFF</string>
     <string name="settings_perf_overlay_on">Debug rendimiento: ON</string>
     <string name="settings_perf_overlay_off">Debug rendimiento: OFF</string>
+    <string name="settings_perf_full_on">Render completo: ON</string>
+    <string name="settings_perf_full_off">Render completo: OFF</string>
 
     <!-- Botón dentro de la pantalla de Ajustes para acceder al Debug OBD. -->
     <string name="settings_open_obd_debug">Debug OBD</string>

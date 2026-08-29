@@ -53,6 +53,7 @@ public final class PrefsManager {
 
     // Overlay de diagnóstico de rendimiento sobre el mapa (true = visible).
     private static final String KEY_PERF_OVERLAY = "perf_overlay";
+    private static final String KEY_PERF_FULL = "perf_full";
 
     // Identificador de la región de datos offline activa (ver RegionData).
     private static final String KEY_ACTIVE_REGION = "active_region";
@@ -219,6 +220,13 @@ public final class PrefsManager {
 
     public void setPerfOverlayEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PERF_OVERLAY, enabled).apply();
+    }
+
+    public boolean isPerfFullEnabled() {
+        return prefs.getBoolean(KEY_PERF_FULL, false);
+    }
+    public void setPerfFullEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PERF_FULL, enabled).apply();
     }
 
     // ---------------------------------------------------------------------

@@ -37,6 +37,8 @@ public final class SettingsActivity extends AppCompatActivity {
         binding.btnToggleDebugOverlay.setOnClickListener(v -> toggleDebugOverlay());
         updatePerfOverlayLabel();
         binding.btnTogglePerfOverlay.setOnClickListener(v -> togglePerfOverlay());
+        updatePerfFullLabel();
+        binding.btnTogglePerfFull.setOnClickListener(v -> togglePerfFull());
         updateDayNightLabel();
         binding.btnDayNight.setOnClickListener(v -> toggleDayNight());
 
@@ -80,6 +82,17 @@ public final class SettingsActivity extends AppCompatActivity {
                 : R.string.settings_perf_overlay_off);
     }
 
+    private void togglePerfFull() {
+        prefsManager.setPerfFullEnabled(!prefsManager.isPerfFullEnabled());
+        updatePerfFullLabel();
+    }
+
+    private void updatePerfFullLabel() {
+        binding.btnTogglePerfFull.setText(prefsManager.isPerfFullEnabled()
+                ? R.string.settings_perf_full_on
+                : R.string.settings_perf_full_off);
+    }
+
     private void toggleDayNight() {
         int next;
         switch (prefsManager.getDayNightPref()) {
@@ -109,6 +122,7 @@ public final class SettingsActivity extends AppCompatActivity {
         ButtonStyler.applySecondary(binding.btnInfo, isNight);
         ButtonStyler.applySecondary(binding.btnToggleDebugOverlay, isNight);
         ButtonStyler.applySecondary(binding.btnTogglePerfOverlay, isNight);
+        ButtonStyler.applySecondary(binding.btnTogglePerfFull, isNight);
         ButtonStyler.applySecondary(binding.btnBack, isNight);
         ButtonStyler.applySecondary(binding.btnDayNight, isNight);
     }
