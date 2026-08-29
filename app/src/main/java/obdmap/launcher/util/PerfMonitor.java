@@ -257,10 +257,8 @@ public final class PerfMonitor implements Choreographer.FrameCallback {
                 .append('/').append(perSecond(gpsFixDoneCount, elapsedMs))
                 .append("  mapa ").append(perSecond(mapEventCount, elapsedMs)).append("/s");
 
-        if (worstMsgMs >= PHASE_REPORT_MS) {
-            report.append("\nmsg ").append(worstMsgMs).append("ms ")
-                    .append(shortenMessage(worstMsgLabel));
-        }
+        report.append("\nmsg ").append(worstMsgMs).append("ms ")
+                .append(worstMsgMs == 0L ? "-" : shortenMessage(worstMsgLabel));
 
         beginWindow(nowMs, heapUsed, gcCount, gcTime, blockingCount, blockingTime);
         return report.toString();

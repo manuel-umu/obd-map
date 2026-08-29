@@ -11,7 +11,6 @@ import org.oscim.core.BoundingBox;
 import org.oscim.core.GeoPoint;
 import org.oscim.core.MapPosition;
 import org.oscim.layers.PathLayer;
-import org.oscim.layers.tile.buildings.BuildingLayer;
 import org.oscim.layers.tile.vector.labeling.LabelLayer;
 import org.oscim.map.Map;
 import org.oscim.theme.IRenderTheme;
@@ -53,6 +52,9 @@ public final class MapManager {
     // Centro de España como fallback si el boundingBox del .map no es válido.
     private static final double FALLBACK_LAT = 40.416775;
     private static final double FALLBACK_LON = -3.703790;
+
+    // Teselas retenidas en memoria
+    private static final int TILE_CACHE_LIMIT = 400;
 
     // Velocidad mínima en m/s para rotar
     private static final float MIN_SPEED_FOR_BEARING_MS = 0.5f;
@@ -135,13 +137,12 @@ public final class MapManager {
         tileSource.setMapFile(mapFilePath.getAbsolutePath());
 
         // Capa base vectorial: lee los tiles del .map y los renderiza via GLES
-        VectorTileLayer baseLayer = map.setBaseMap(tileSource);
+        VectorTileLayer baseLayer = new VectorTileLayer(map, TILE_CACHE_LIMIT);
+        baseLayer.setTileSource(tileSource);
+        map.setBaseMap(baseLayer);
 
         // Tema inicial
         applyThemeForMode(DayNightMode.DAY);
-
-        // Extrusión 3D de edificios
-        map.layers().add(new BuildingLayer(map, baseLayer));
 
         // Etiquetas de calles y puntos de interes
         map.layers().add(new LabelLayer(map, baseLayer));
