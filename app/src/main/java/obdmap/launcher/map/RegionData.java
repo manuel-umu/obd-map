@@ -31,13 +31,13 @@ public final class RegionData {
     /** URL de descarga del .map. */
     public final String mapUrl;
 
-    /** Zip del grafo en assets, o null si la región no viene empaquetada. */
+    /** URL del zip del grafo, o null si la región no tiene grafo publicado. */
     @Nullable
-    public final String graphAssetZip;
+    public final String graphUrl;
 
     /**
-     * Fecha del extracto OSM del que salieron el .map y el grafo. Al cambiar,
-     * el grafo instalado se considera obsoleto y se vuelve a extraer.
+     * Fecha del extracto OSM del grafo. Al cambiar, el grafo instalado se
+     * considera obsoleto y se vuelve a extraer.
      */
     public final String dataVersion;
 
@@ -45,13 +45,13 @@ public final class RegionData {
                        @NonNull String displayName,
                        @NonNull String mapFileName,
                        @NonNull String mapUrl,
-                       @Nullable String graphAssetZip,
+                       @Nullable String graphUrl,
                        @NonNull String dataVersion) {
         this.id            = id;
         this.displayName   = displayName;
         this.mapFileName   = mapFileName;
         this.mapUrl        = mapUrl;
-        this.graphAssetZip = graphAssetZip;
+        this.graphUrl      = graphUrl;
         this.dataVersion   = dataVersion;
     }
 
@@ -59,15 +59,16 @@ public final class RegionData {
     // Regiones conocidas
     // ---------------------------------------------------------------------
 
-    public static final RegionData MURCIA = new RegionData(
-            "murcia",
-            "Región de Murcia",
-            "murcia.map",
-            "https://download.mapsforge.org/maps/v5/europe/spain/murcia.map",
-            "murcia-gh.zip",
-            "2026-06-23");
+    /** Mapa nacional */
+    public static final RegionData ESPANA = new RegionData(
+            "espana",
+            "España",
+            "espana.map",
+            "https://download.mapsforge.org/maps/v5/europe/spain.map",
+            "https://github.com/manuel-umu/obd-map-server/releases/download/datos-2026-09-01/espana-gh.zip",
+            "2026-09-01");
 
-    private static final RegionData[] ALL = { MURCIA };
+    private static final RegionData[] ALL = { ESPANA };
 
     /** Copia del registro de regiones conocidas. */
     @NonNull
@@ -78,7 +79,7 @@ public final class RegionData {
     /** Región usada mientras el usuario no elija otra. */
     @NonNull
     public static RegionData getDefault() {
-        return MURCIA;
+        return ESPANA;
     }
 
     /** Busca por identificador; null si no existe o el id es null. */

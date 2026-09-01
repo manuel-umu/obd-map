@@ -28,9 +28,12 @@ import obdmap.launcher.prefs.PrefsManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.zip.ZipEntry;
@@ -48,6 +51,9 @@ public final class RoutingManager {
     public static final int STATE_LOADING = 1;
     public static final int STATE_READY = 2;
     public static final int STATE_ERROR = 3;
+
+    private static final int CONNECT_TIMEOUT_MS = 15000;
+    private static final int READ_TIMEOUT_MS    = 30000;
 
     @IntDef({STATE_IDLE, STATE_LOADING, STATE_READY, STATE_ERROR})
     @Retention(RetentionPolicy.SOURCE)
@@ -283,14 +289,13 @@ public final class RoutingManager {
             boolean outdated = !region.dataVersion.equals(prefs.getInstalledDataVersion(region.id));
 
             if (missing || outdated) {
-                if (region.graphAssetZip == null) {
+                if (region.graphUrl == null) {
                     throw new IOException("La región " + region.id
-                            + " no trae grafo empaquetado");
+                            + " no tiene grafo publicado");
                 }
-                notifyProgress(listener, "Instalando grafo…");
                 prefs.clearInstalledDataVersion(region.id);
                 deleteRecursively(graphDir);
-                extractAsset(appContext, region.graphAssetZip, graphDir);
+                downloadAndExtract(region.graphUrl, graphDir, listener);
                 prefs.setInstalledDataVersion(region.id, region.dataVersion);
             }
 
@@ -326,17 +331,59 @@ public final class RoutingManager {
         }
     }
 
-    private static void extractAsset(@NonNull Context context,
-                                     @NonNull String assetZipName,
-                                     @NonNull File destDir) throws IOException {
+    /** Descarga el zip del grafo y lo descomprime al vuelo, sin fichero temporal. */
+    private void downloadAndExtract(@NonNull String zipUrl,
+                                    @NonNull File destDir,
+                                    @NonNull final RoutingListener listener) throws IOException {
+        notifyProgress(listener, "Descargando grafo…");
+
+        HttpURLConnection connection = (HttpURLConnection) new URL(zipUrl).openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        connection.setInstanceFollowRedirects(true);
+        connection.setRequestMethod("GET");
+        try {
+            connection.connect();
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("Error HTTP " + responseCode + " al descargar el grafo");
+            }
+
+            final long totalBytes = connection.getContentLength();
+            InputStream counting = new FilterInputStream(connection.getInputStream()) {
+                private long readSoFar  = 0;
+                private int  lastPercent = -1;
+
+                @Override
+                public int read(byte[] b, int off, int len) throws IOException {
+                    int read = super.read(b, off, len);
+                    if (read > 0 && totalBytes > 0) {
+                        readSoFar += read;
+                        int percent = (int) (readSoFar * 100 / totalBytes);
+                        if (percent != lastPercent) {
+                            lastPercent = percent;
+                            notifyProgress(listener, "Descargando grafo… " + percent + "%");
+                        }
+                    }
+                    return read;
+                }
+            };
+
+            extractZip(counting, destDir);
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private static void extractZip(@NonNull InputStream zipStream,
+                                   @NonNull File destDir) throws IOException {
         if (!destDir.mkdirs() && !destDir.isDirectory()) {
             throw new IOException("No se pudo crear el directorio: " + destDir.getAbsolutePath());
         }
 
         final byte[] buffer = new byte[8192];
 
-        InputStream assetStream = context.getAssets().open(assetZipName);
-        ZipInputStream zipIn = new ZipInputStream(assetStream);
+        ZipInputStream zipIn = new ZipInputStream(zipStream);
         try {
             ZipEntry entry;
             while ((entry = zipIn.getNextEntry()) != null) {
