@@ -29,6 +29,14 @@ import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.util.Calendar;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.LinearLayout;
+
+import obdmap.launcher.map.PlaceSearch;
+
 import java.util.List;
 import java.util.Locale;
 
@@ -192,6 +200,24 @@ public final class MainActivity extends AppCompatActivity
 
     private final Handler hudHandler = new Handler(Looper.getMainLooper());
 
+    private static final long SEARCH_DEBOUNCE_MS = 350L;
+    private static final int  MIN_SEARCH_CHARS   = 3;
+
+    private final PlaceSearch placeSearch   = new PlaceSearch();
+    private final Handler     searchHandler = new Handler(Looper.getMainLooper());
+
+    private final PlaceSearch.Listener searchListener = new PlaceSearch.Listener() {
+        @Override
+        public void onResults(@NonNull List<PlaceSearch.Place> results) {
+            showSuggestions(results);
+        }
+
+        @Override
+        public void onError(@NonNull String message) {
+            showSuggestionMessage(getString(R.string.search_error));
+        }
+    };
+
     private final Runnable hudRefreshRunnable = () -> {
         hudRefreshPending = false;
         if (binding == null || boundService == null) {
@@ -223,6 +249,29 @@ public final class MainActivity extends AppCompatActivity
         binding.recenterButton.setOnClickListener(v -> recenterOnPosition());
         binding.destFavoriteButton.setOnClickListener(v -> togglePendingPickFavorite());
         binding.favoritesButton.setOnClickListener(v -> toggleFavoritesPanel());
+
+        // adjustResize no funciona con windowFullscreen: soltamos el flag
+        // mientras el buscador tiene el foco y lo devolvemos al salir.
+        binding.searchBox.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            } else {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
+        });
+
+        binding.searchBox.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence text, int start, int before, int count) { }
+
+            @Override
+            public void afterTextChanged(Editable text) {
+                scheduleSearch(text.toString().trim());
+            }
+        });
 
         // Detectar movimiento manual en el mapa.
         // ACTION_MOVE desactiva el seguimiento y muestra el botón de recentrar.
@@ -850,6 +899,8 @@ public final class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         hudHandler.removeCallbacks(hudRefreshRunnable);
+        searchHandler.removeCallbacksAndMessages(null);
+        placeSearch.cancel();
 
         if (mapDownloader != null && mapDownloader.isRunning()) {
             mapDownloader.cancel();
@@ -1297,6 +1348,102 @@ public final class MainActivity extends AppCompatActivity
         binding.navSummaryBar.setBackgroundColor(navBg);
         binding.navRemainingDistance.setTextColor(navTextPrimary);
         binding.navEta.setTextColor(navTextPrimary);
+    }
+
+    /** Introduciendo minimo 3 letras busca destinos */
+    private void scheduleSearch(@NonNull final String query) {
+        searchHandler.removeCallbacksAndMessages(null);
+        placeSearch.cancel();
+
+        if (query.length() < MIN_SEARCH_CHARS) {
+            hideSuggestions();
+            return;
+        }
+
+        searchHandler.postDelayed(
+                () -> placeSearch.search(query, lastLat, lastLon, searchListener),
+                SEARCH_DEBOUNCE_MS);
+    }
+
+    private void showSuggestions(@NonNull List<PlaceSearch.Place> results) {
+        if (binding == null) {
+            return;
+        }
+        if (results.isEmpty()) {
+            showSuggestionMessage(getString(R.string.search_no_results));
+            return;
+        }
+
+        binding.searchSuggestionsPanel.removeAllViews();
+        boolean isNight = (currentDayNightMode == DayNightMode.NIGHT);
+
+        for (int i = 0; i < results.size(); i++) {
+            final PlaceSearch.Place place = results.get(i);
+
+            Button row = new Button(this);
+            row.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            row.setText(place.label);
+            row.setTextSize(18f);
+            row.setAllCaps(false);
+            row.setMaxLines(2);
+            ButtonStyler.applySecondary(row, isNight);
+            row.setOnClickListener(v -> pickSearchResult(place));
+
+            binding.searchSuggestionsPanel.addView(row);
+        }
+        binding.searchSuggestionsPanel.setVisibility(View.VISIBLE);
+    }
+
+    private void showSuggestionMessage(@NonNull String message) {
+        if (binding == null) {
+            return;
+        }
+        binding.searchSuggestionsPanel.removeAllViews();
+
+        TextView label = new TextView(this);
+        label.setText(message);
+        label.setTextSize(18f);
+        label.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+
+        binding.searchSuggestionsPanel.addView(label);
+        binding.searchSuggestionsPanel.setVisibility(View.VISIBLE);
+    }
+
+    private void hideSuggestions() {
+        if (binding == null) {
+            return;
+        }
+        binding.searchSuggestionsPanel.removeAllViews();
+        binding.searchSuggestionsPanel.setVisibility(View.GONE);
+    }
+
+    /** Lleva un resultado de búsqueda al mismo panel de confirmación que el long-press. */
+    private void pickSearchResult(@NonNull PlaceSearch.Place place) {
+        if (binding == null) {
+            return;
+        }
+        searchHandler.removeCallbacksAndMessages(null);
+        placeSearch.cancel();
+        hideSuggestions();
+
+        binding.searchBox.setText("");
+        binding.searchBox.clearFocus();
+
+        InputMethodManager imm =
+                (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(binding.searchBox.getWindowToken(), 0);
+        }
+
+        if (mapManager != null) {
+            mapManager.centerAt(place.lat, place.lon);
+        }
+        if (destinationPickerLayer != null) {
+            destinationPickerLayer.showPin(place.lat, place.lon);
+        }
+        showDestinationConfirmPanel(place.lat, place.lon);
     }
 
     /**

@@ -59,7 +59,8 @@
             android:keepScreenOn="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
-            android:stateNotNeeded="true">
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustResize">
 
             <!-- Lanzador estándar: aparece en el cajón de apps. -->
             <intent-filter>

@@ -104,17 +104,20 @@ public final class DestinationPickerLayer extends Layer implements GestureListen
         final double lat = geoPoint.getLatitude();
         final double lon = geoPoint.getLongitude();
 
-        // Mover el pin al punto tocado y hacerlo visible.
+        showPin(lat, lon);
+
+        uiHandler.post(() -> listener.onDestinationPicked(lat, lon));
+
+        return true;
+    }
+
+    /** Coloca el pin provisional en un punto y lo hace visible. */
+    public void showPin(double lat, double lon) {
         pinItem.geoPoint = new GeoPoint(lat, lon);
         markerLayer.setEnabled(true);
         markerLayer.populate();
         mMap.updateMap(true);
         pinVisible = true;
-
-        // Notificar en el hilo de UI para que la Activity pueda manipular vistas.
-        uiHandler.post(() -> listener.onDestinationPicked(lat, lon));
-
-        return true;
     }
 
     /** Oculta el pin provisional (al cancelar la selección). */

@@ -261,4 +261,7 @@
     <string name="info_update_available">Nueva versión disponible: %1$s</string>
     <!-- %1$s = descripción breve del error. -->
     <string name="info_check_failed">No se pudo comprobar: %1$s</string>
+    <string name="search_hint">Buscar lugar…</string>
+    <string name="search_no_results">Sin resultados</string>
+    <string name="search_error">Sin conexión para buscar</string>
 </resources>
